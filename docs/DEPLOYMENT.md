@@ -3,11 +3,11 @@
 ## 1. الخادم + قاعدة البيانات
 
 1. أنشئ مشروعاً في Railway.
-2. أضف **Database → PostgreSQL**.
-3. أضف **Service → Deploy from GitHub repo** واختر المستودع.
-4. Settings → Source → **Root Directory**: `backend`.
-5. Railway يقرأ `backend/railway.json` و`backend/Dockerfile`.
-6. Variables (Service → Variables):
+2. أضف **Database → PostgreSQL** (اسم الخدمة `Postgres`).
+3. أضف **Service → Deploy from GitHub repo** واختر `ahmzkdljsuwg-oss/nexus-ai`.
+4. اترك **Root Directory** فارغاً. Railway يقرأ `railway.json` و`Dockerfile` من جذر المستودع.
+   - البديل: اترك Root Directory = `backend` لاستخدام `backend/railway.json` و`backend/Dockerfile`.
+5. Variables (Service → Variables):
 
 ```
 ENVIRONMENT=production
@@ -21,12 +21,22 @@ CORS_ORIGINS=*
 
 `DATABASE_URL` من خدمة Postgres يجب أن يبقى بصيغة `postgresql+asyncpg://`. إن أعطاك Railway `postgresql://` فقط، استبدل البادئة بـ `postgresql+asyncpg://`.
 
-7. Deploy. تحقق:
+6. Deploy. تحقق:
 
 ```bash
 curl -s https://<service>.up.railway.app/api/health
-# {"status":"ok","service":"nexus-ai","database":"ok","gemini_configured":true,...}
+# {"status":"ok","service":"NEXUS AI","database":"ok","gemini_configured":true,...}
 ```
+
+7. تحقق من القاعدة والمخطط ثم من الاتصال الكامل:
+
+```bash
+cd backend
+railway run --service <service-name> python scripts/init_db.py
+python scripts/verify_production.py https://<service>.up.railway.app
+```
+
+`init_db.py` ينشئ الجداول إذا لم تكن موجودة، ويعرض: `chats, files, messages, projects, sessions, users`.
 
 8. راقب Logs: يجب أن تظهر `Application startup complete` بدون `JWT_SECRET`.
 

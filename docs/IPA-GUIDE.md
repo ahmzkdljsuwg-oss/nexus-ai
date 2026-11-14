@@ -41,6 +41,21 @@ IPA موقّع بشهادة توقيع Apple صالحة (`Distribution` أو `De
 - `.github/workflows/ios-build.yml`: يبني على macOS، ينتج archive غير موقّع و`NexusAI-unsigned-ipa`.
 - `.github/workflows/ios-signed.yml`: يدوي، يستورد الشهادة والملف التعريفي وينتج `NexusAI-signed-ipa`.
 
+## مسار بديل إذا تعطلت GitHub macOS runners
+
+1. **Codemagic** (`codemagic.yaml`): اربط المستودع، ثم شغّل `ios-unsigned`. يبني على `mac_mini_m2` وينتج `ios/build/NexusAI-unsigned.ipa`.
+2. **Mac محلي**:
+
+```bash
+brew install xcodegen
+cd ios
+./scripts/build-ipa.sh
+```
+
+يُنتج `ios/build/NexusAI-unsigned.ipa` ويتحقق من وجود `Payload/NexusAI.app/Info.plist` داخل الأرشيف.
+
+الملف الناتج غير موقّع في الحالتين. التثبيت المباشر يتطلب إعادة توقيع بـ ESign أو Sideloadly، أو بناء نسخة موقّعة عبر `ios-signed` أو Xcode بحساب Apple.
+
 ## Bundle Identifier
 
 `ai.nexus.app` — موجود في `ios/project.yml`. غيّره إن كان لديك معرّف مختلف في حساب Apple، وأعد التوليد بـ `xcodegen generate`.

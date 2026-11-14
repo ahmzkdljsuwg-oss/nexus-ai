@@ -1,0 +1,43 @@
+workflows:
+  ios-unsigned:
+    name: NEXUS AI iOS unsigned IPA
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      xcode: latest
+      vars:
+        XCODE_SCHEME: NexusAI
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+    scripts:
+      - name: Generate Xcode project
+        script: |
+          brew install xcodegen
+          cd ios
+          xcodegen generate
+      - name: Compile simulator build
+        script: |
+          cd ios
+          xcodebuild -project NexusAI.xcodeproj -scheme "$XCODE_SCHEME" \
+            -configuration Debug -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+      - name: Archive unsigned device build
+        script: |
+          cd ios
+          xcodebuild -project NexusAI.xcodeproj -scheme "$XCODE_SCHEME" \
+            -configuration Release -destination 'generic/platform=iOS' \
+            -archivePath build/NexusAI.xcarchive \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" archive
+      - name: Package and validate IPA
+        script: |
+          cd ios
+          mkdir -p build/Payload
+          cp -R build/NexusAI.xcarchive/Products/Applications/NexusAI.app build/Payload/
+          ditto -c -k --sequesterRsrc --keepParent build/Payload build/NexusAI-unsigned.ipa
+          unzip -l build/NexusAI-unsigned.ipa | grep 'Payload/NexusAI.app/Info.plist'
+    artifacts:
+      - ios/build/NexusAI-unsigned.ipa

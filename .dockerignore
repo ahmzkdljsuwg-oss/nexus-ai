@@ -1,0 +1,10 @@
+.git
+.github
+ios
+docs
+**/__pycache__
+**/*.pyc
+**/.venv
+**/.env
+**/nexus.db
+**/.pytest_cache
