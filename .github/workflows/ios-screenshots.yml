@@ -40,6 +40,19 @@ jobs:
         working-directory: ios
         run: xcodegen generate
 
+      - name: Prepare simulator
+        run: |
+          if ! xcrun simctl list runtimes | grep -q "com.apple.CoreSimulator.SimRuntime.iOS"; then
+            sudo xcodebuild -downloadPlatform iOS
+          fi
+          xcrun simctl list runtimes
+          RUNTIME=$(xcrun simctl list runtimes | grep "com.apple.CoreSimulator.SimRuntime.iOS" | awk '{print $NF}' | tail -1)
+          DEVTYPE=$(xcrun simctl list devicetypes | grep -m1 "iPhone" | sed -E 's/.*\((com\.apple[^)]+)\).*/\1/')
+          SIM_ID=$(xcrun simctl create NexusShot "$DEVTYPE" "$RUNTIME")
+          xcrun simctl boot "$SIM_ID" || true
+          echo "SIM_ID=$SIM_ID" >> "$GITHUB_ENV"
+          echo "Using simulator $SIM_ID ($DEVTYPE on $RUNTIME)"
+
       - name: Run UI screenshot test
         working-directory: ios
         run: |
@@ -47,7 +60,7 @@ jobs:
           xcodebuild test \
             -project NexusAI.xcodeproj \
             -scheme NexusAI \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination "id=$SIM_ID" \
             -derivedDataPath build \
             -resultBundlePath build/UITests.xcresult \
             -only-testing:NexusAIUITests/ScreenshotTests/testFullAppFlowWithScreenshots \
