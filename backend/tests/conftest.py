@@ -13,7 +13,7 @@ TEST_DB = Path(f"/tmp/nexus-test-{uuid4().hex}.db")
 os.environ["DATABASE_URL"] = EXTERNAL_DB or f"sqlite+aiosqlite:///{TEST_DB}"
 os.environ["JWT_SECRET"] = "test-secret-key-that-is-long-enough"
 os.environ["ENVIRONMENT"] = "test"
-os.environ["GEMINI_API_KEY"] = ""
+os.environ.setdefault("GEMINI_API_KEY", "")
 
 from app.db import SessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402

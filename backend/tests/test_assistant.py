@@ -163,12 +163,10 @@ async def test_gemini_client_uses_header_key_and_surfaces_rate_limit():
 
 
 @pytest.mark.asyncio
-async def test_real_gemini_connection_when_explicitly_enabled():
+async def test_real_gemini_connection_automatically_when_key_available():
     import os
 
-    if os.getenv("NEXUS_REAL_GEMINI") != "1":
-        pytest.skip("Set NEXUS_REAL_GEMINI=1 with a real GEMINI_API_KEY to call Gemini")
-    key = os.getenv("GEMINI_API_KEY", "")
+    key = os.getenv("GEMINI_API_KEY", "").strip()
     if not key:
         pytest.skip("GEMINI_API_KEY is not set")
     settings = Settings(gemini_api_key=key)
