@@ -1,0 +1,61 @@
+name: Deploy Backend to Railway
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip_gemini:
+        description: "Deploy only; skip the real Gemini check"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: railway-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Require Railway token
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "::error::RAILWAY_TOKEN is not configured. Add it in repository secrets, then run this workflow again."
+            exit 1
+          fi
+
+      - name: Install Railway CLI
+        run: npm install --global @railway/cli
+
+      - name: Install verifier dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Deploy, verify health and Gemini
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-2.5-flash
+          RAILWAY_WORKSPACE: ${{ vars.RAILWAY_WORKSPACE }}
+        run: |
+          FLAGS=""
+          if [ "${{ inputs.skip_gemini }}" = "true" ]; then FLAGS="--skip-gemini"; fi
+          python scripts/deploy_railway.py $FLAGS
+
+      - name: Upload deployment record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: railway-deployment
+          path: deployment.json
+          if-no-files-found: ignore

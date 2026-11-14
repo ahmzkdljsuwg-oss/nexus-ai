@@ -23,16 +23,16 @@ IPA موقّع بشهادة توقيع Apple صالحة (`Distribution` أو `De
 - ملف `.mobileprovision` صالح.
 - Bundle Identifier مطابق، والأجهزة مسجلة في الحساب (Development/Ad Hoc).
 
-الملفات المطلوبة كـ GitHub Secrets:
+الملفات المطلوبة كـ GitHub Secrets (التفاصيل الكاملة في `docs/SIGNING.md`):
 
 | Secret | القيمة |
 |---|---|
-| `BUILD_CERTIFICATE_BASE64` | `base64 -i cert.p12` |
-| `P12_PASSWORD` | كلمة مرور الشهادة |
-| `PROVISIONING_PROFILE_BASE64` | `base64 -i profile.mobileprovision` |
-| `KEYCHAIN_PASSWORD` | أي كلمة مرور مؤقتة للـ keychain في CI |
-| `DEVELOPMENT_TEAM` | Apple Team ID |
-| `PROVISIONING_PROFILE_SPECIFIER` | اسم الملف التعريفي |
+| `IOS_CERT_P12_BASE64` | `base64 -i cert.p12` (Apple Distribution أو Apple Development) |
+| `IOS_CERT_PASSWORD` | كلمة مرور الشهادة |
+| `IOS_PROVISIONING_PROFILE_BASE64` | `base64 -i profile.mobileprovision` |
+| `IOS_TEAM_ID` | Apple Team ID |
+
+`IOS_BUNDLE_ID` غير مطلوب لأن Bundle ID ثابت في الـ workflow: `ai.nexus.app`.
 
 ثم: Actions → **Build Signed iOS App** → Run workflow.
 
