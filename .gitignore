@@ -12,3 +12,5 @@ __pycache__/
 xcuserdata/
 DerivedData/
 ios/build/
+*.ipa
+*.ipa.sha256
