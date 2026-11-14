@@ -45,6 +45,25 @@ The goal: no decorative buttons, no fake online state, no demo data.
 - The workflow `.github/workflows/ios-screenshots.yml` runs on a macOS runner with a real simulator and uploads the screenshots as an artifact.
 - Backend suite: 42 passed, 1 skipped (the Gemini test needs a key).
 
+## Captured screenshots
+
+Real screenshots from `xcodebuild test` on an iPhone 16 simulator against a running backend
+(GitHub Actions run `43602929211`, workflow `ios-screenshots.yml`):
+
+| File | Screen |
+| --- | --- |
+| `screenshots/01-auth.png` | Login / server setup |
+| `screenshots/02-home.png` | Home with modules and status strip |
+| `screenshots/03-server-status.png` | Connection status sheet |
+| `screenshots/04-assistant.png` | NEXUS Assistant |
+| `screenshots/04-files.png` | Smart Files |
+| `screenshots/04-projects.png` | Projects |
+| `screenshots/04-studio.png` | Developer Studio |
+| `screenshots/04-security.png` | Security Center |
+| `screenshots/04-store.png` | NEXUS Store |
+| `screenshots/04-settings.png` | Settings (English) |
+| `screenshots/05-settings-arabic.png` | Settings after switching to Arabic (RTL) |
+
 ## Limits
 
 - Assistant replies require `GEMINI_API_KEY`; without it the UI shows a real error.
