@@ -1,7 +1,7 @@
 # NEXUS AI — تقرير الاختبار الفعلي
 
-**تاريخ التشغيل:** 2026-11-09
-**البيئة:** Linux (بيئة العمل)، Python 3.13 داخل `.venv`، SQLite مؤقت للاختبار.
+**تاريخ التشغيل:** 2026-11-14
+**البيئة:** Linux (بيئة العمل)، Python 3.13 داخل `.venv`، SQLite مؤقت + PostgreSQL 18.7 محلي.
 **الأمر:**
 
 ```bash
@@ -12,14 +12,22 @@ cd backend
 **النتيجة الفعلية:**
 
 ```
-.................s                                                        [100%]
-17 passed, 1 skipped in 5.88s
+.................s.........................                              [100%]
+42 passed, 1 skipped in 7.51s
 ```
 
-الاختبار المتخطى هو اتصال Gemini الحقيقي، ويُفعّل صراحةً:
+نفس المجموعة على PostgreSQL 18.7:
 
 ```bash
-NEXUS_REAL_GEMINI=1 GEMINI_API_KEY=... .venv/bin/python -m pytest tests/test_assistant.py -q
+NEXUS_TEST_DATABASE_URL='postgresql+asyncpg://nexus@127.0.0.1:55432/nexus_test' \
+  .venv/bin/python -m pytest -q
+# 42 passed, 1 skipped in 7.00s
+```
+
+الاختبار المتخطى هو اتصال Gemini الحقيقي. يعمل تلقائياً بمجرد وجود `GEMINI_API_KEY`:
+
+```bash
+GEMINI_API_KEY=... .venv/bin/python -m pytest tests/test_assistant.py -q
 ```
 
 ---
@@ -45,7 +53,12 @@ NEXUS_REAL_GEMINI=1 GEMINI_API_KEY=... .venv/bin/python -m pytest tests/test_ass
 | 15 | `test_assistant_cannot_attach_another_users_project` | منع ربط مشروع مستخدم آخر |
 | 16 | `test_gemini_client_uses_header_key_and_surfaces_rate_limit` | المفتاح في هيدر، معالجة 429 |
 | 17 | `test_health_reports_database_and_gemini_state` | `/api/health` يعكس حالة القاعدة وGemini |
-| 18 (skip) | `test_real_gemini_connection_when_explicitly_enabled` | اتصال Gemini حقيقي عند توفير المفتاح |
+| 18 | `test_health_over_real_http` | الخادم يعمل عبر TCP حقيقي ويقرأ PostgreSQL/SQLite |
+| 19 | `test_register_login_and_read_account_over_real_http` | تسجيل ودخول وقراءة الحساب عبر HTTP فعلي |
+| 20 | `test_protected_route_rejects_missing_token_over_real_http` | رفض الطلبات المحمية بلا توكن عبر HTTP |
+| 21 | `test_railway_uses_dockerfile_and_health_check` | إعداد Railway يبني Dockerfile ويفحص `/api/health` |
+| 22 | `test_dockerfile_runs_as_non_root_and_exposes_port` | الحاوية تعمل بمستخدم غير جذري وتفتح المنفذ |
+| 23 | `test_env_example_lists_required_runtime_variables_without_values` | المتغيرات المطلوبة موجودة بلا قيم أسرار |
 
 ---
 
@@ -53,10 +66,11 @@ NEXUS_REAL_GEMINI=1 GEMINI_API_KEY=... .venv/bin/python -m pytest tests/test_ass
 
 | البند | السبب | كيف يُختبر |
 |---|---|---|
-| بناء مشروع Xcode | لا يوجد macOS/Xcode في بيئة Linux | GitHub Actions → `Build iOS App` |
+| بناء مشروع Xcode | لا يوجد macOS/Xcode في بيئة Linux | ✅ نجح في GitHub Actions run `43600526631` |
+| محتوى IPA | تم تنزيله وفحصه محلياً | ✅ `Payload/NexusAI.app/{Info.plist,NexusAI}` موجودان |
 | تشغيل التطبيق على iPhone | لا جهاز/محاكي iOS هنا | جهاز حقيقي بعد التوقيع |
 | اتصال التطبيق بالخادم حياً | يحتاج Build + خادم منشور | افتح التطبيق واكتب عنوان الخادم |
-| Gemini حقيقي | لا يوجد `GEMINI_API_KEY` في بيئة العمل | شغّل اختبار `NEXUS_REAL_GEMINI` أو استخدم المساعد |
+| Gemini حقيقي | لا يوجد `GEMINI_API_KEY` في بيئة العمل | يعمل الاختبار تلقائياً عند توفر المفتاح |
 | الميكروفون والتعرف على الكلام | يحتاج جهاز iOS وأذونات فعلية | جرّب زر الميكروفون وارفض/اقبل الإذن |
 | نشر Railway | يحتاج حساب Railway وصلاحيات | `docs/DEPLOYMENT.md` |
 

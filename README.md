@@ -19,11 +19,11 @@
 | المحادثات وسجلها | ✅ يعمل | `test_chats_store_messages_and_are_isolated` |
 | الأدوات ومركز الأمان والإعدادات | ✅ يعمل | `test_tools_and_security_surfaces_are_real` |
 | تحديث بيانات الحساب وكلمة المرور | ✅ يعمل | `test_account_update_name_and_password` |
-| مساعد Gemini | ⚠️ الكود جاهز، يحتاج `GEMINI_API_KEY` | اختبار حقيقي اختياري: `NEXUS_REAL_GEMINI=1` |
+| مساعد Gemini | ⚠️ الكود جاهز، يحتاج `GEMINI_API_KEY` | اختبار حقيقي تلقائي عند توفر المفتاح |
 | ربط التطبيق بالخادم | ⚠️ يحتاج Build على macOS + جهاز/محاكي | لم يُشغّل هنا (بيئة Linux) |
 | بناء IPA | ⚠️ جاهز عبر GitHub Actions | workflow: `.github/workflows/ios-build.yml` |
 
-**نتيجة آخر تشغيل للاختبارات:** `17 passed, 1 skipped` — التفاصيل في `docs/TEST-REPORT.md`.
+**نتيجة آخر تشغيل للاختبارات:** `42 passed, 1 skipped` على SQLite وPostgreSQL — التفاصيل في `docs/TEST-REPORT.md`.
 
 ---
 
@@ -155,7 +155,7 @@ GitHub Actions:
 ## 8. ما تبقى بصراحة
 
 - **Build iOS لم يُنفَّذ في بيئة العمل الحالية** (Linux بدون Xcode). الـ workflow جاهز، وأول تشغيل على GitHub Actions سيثبت النتيجة.
-- **Gemini لم يُختبر بمفتاح حقيقي هنا**؛ الاختبار موجود ومشروط بـ `NEXUS_REAL_GEMINI=1` و `GEMINI_API_KEY`.
+- **Gemini لم يُختبر بمفتاح حقيقي هنا** لأنه لا يوجد `GEMINI_API_KEY`; الاختبار يعمل تلقائياً عند توفره.
 - **النشر على Railway** يحتاج تنفيذه من حسابك أو تزويدنا بصلاحية؛ لم يُنشر بعد.
 - **اختبار الصوت/الميكروفون** يحتاج جهاز iPhone؛ الأذونات مضافة في `Info.plist` والكود جاهز.
 
