@@ -40,4 +40,18 @@ targets:
         INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: NEXUS AI converts your recorded voice into text on this device so it can send your question to the NEXUS server.
         INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking: YES
     scheme:
-      testTargets: []
+      testTargets:
+        - NexusAIUITests
+
+  NexusAIUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: NexusAIUITests
+    dependencies:
+      - target: NexusAI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.nexus.app.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: NexusAI

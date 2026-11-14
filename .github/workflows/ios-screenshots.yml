@@ -1,0 +1,76 @@
+name: iOS UI Screenshots
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios-screenshots.yml"
+
+jobs:
+  screenshots:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Start backend on 127.0.0.1:8000
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///./ui-test.db
+          JWT_SECRET: ui-screenshot-secret-not-for-production
+          ALLOW_REGISTRATION: "true"
+          GEMINI_API_KEY: ""
+        run: |
+          pip install -r backend/requirements.txt
+          (cd backend && python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/backend.log 2>&1 &)
+          for i in $(seq 1 40); do
+            curl -sf http://127.0.0.1:8000/api/health && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8000/api/health | tee /tmp/health.json
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: Run UI screenshot test
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project NexusAI.xcodeproj \
+            -scheme NexusAI \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -derivedDataPath build \
+            -resultBundlePath build/UITests.xcresult \
+            -only-testing:NexusAIUITests/ScreenshotTests/testFullAppFlowWithScreenshots \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Export screenshots
+        if: always()
+        working-directory: ios
+        run: |
+          mkdir -p build/screenshots
+          xcrun xcresulttool export attachments \
+            --path build/UITests.xcresult \
+            --output-path build/screenshots || true
+          find build/screenshots -type f -maxdepth 2 | head -50
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: NexusAI-ui-screenshots
+          path: ios/build/screenshots
+          if-no-files-found: warn
+
+      - name: Show backend log
+        if: failure()
+        run: tail -100 /tmp/backend.log

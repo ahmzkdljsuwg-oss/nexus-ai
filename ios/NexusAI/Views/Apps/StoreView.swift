@@ -142,9 +142,9 @@ private struct ToolDetailView: View {
                     .font(.system(.subheadline, design: .rounded))
                     .foregroundStyle(NexusTheme.text.opacity(0.9))
                 row(label: app.text("common.appearance"), value: tool.category)
-                row(label: "STATUS", value: tool.status)
+                row(label: app.text("common.status"), value: tool.status)
                 if let endpoint = tool.endpoint {
-                    row(label: "API", value: endpoint)
+                    row(label: app.text("common.api"), value: endpoint)
                 }
                 Spacer()
             }

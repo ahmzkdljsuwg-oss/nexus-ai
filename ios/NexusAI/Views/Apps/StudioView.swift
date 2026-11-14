@@ -19,7 +19,7 @@ struct StudioView: View {
                     .lineLimit(1)
                 Spacer()
                 Menu {
-                    Button("All projects") { projectFilter = nil }
+                    Button(app.text("server.allProjects")) { projectFilter = nil }
                     ForEach(projects) { project in
                         Button(project.name) { projectFilter = project.id }
                     }

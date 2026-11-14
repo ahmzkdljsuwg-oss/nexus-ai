@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import func, select
 
 from app.deps import CurrentSession, CurrentUser, DbSession
@@ -53,7 +53,7 @@ async def update_settings(payload: SettingsUpdate, user: CurrentUser, db: DbSess
 
 
 @router.get("/security/status")
-async def security_status(user: CurrentUser, session: CurrentSession, db: DbSession) -> dict:
+async def security_status(request: Request, user: CurrentUser, session: CurrentSession, db: DbSession) -> dict:
     active_sessions = await db.scalar(
         select(func.count(Session.id)).where(
             Session.user_id == user.id,
@@ -75,9 +75,24 @@ async def security_status(user: CurrentUser, session: CurrentSession, db: DbSess
         "account_created_at": user.created_at,
         "checks": [
             {"id": "jwt", "label": "JWT session validation", "state": "pass"},
-            {"id": "owner_scope", "label": "Per-user data ownership checks", "state": "pass"},
-            {"id": "password_hash", "label": "Bcrypt password hashing", "state": "pass"},
-            {"id": "transport", "label": "HTTPS transport", "state": "server-derived"},
+            {"id": "owner_scope", "label": "User-scoped database queries", "state": "pass"},
+            {
+                "id": "password_hash",
+                "label": "Bcrypt password hashing",
+                "state": "pass" if str(user.password_hash).startswith("$2") else "fail",
+            },
+            {
+                "id": "database",
+                "label": "Database reachable",
+                "state": "pass",
+            },
+            {
+                "id": "transport",
+                "label": "HTTPS transport",
+                "state": "pass"
+                if (request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https")
+                else "warn",
+            },
         ],
     }
 

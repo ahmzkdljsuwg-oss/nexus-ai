@@ -4,6 +4,7 @@ struct ControlCenterView: View {
     @EnvironmentObject private var app: AppState
     @Environment(\.dismiss) private var dismiss
     @State private var confirmLogout = false
+    @State private var showConnection = false
 
     var body: some View {
         ZStack {
@@ -19,6 +20,10 @@ struct ControlCenterView: View {
             }
         }
         .environment(\.layoutDirection, app.locale.layoutDirection)
+        .sheet(isPresented: $showConnection) {
+            ConnectionStatusView()
+                .presentationDetents([.medium, .large])
+        }
         .confirmationDialog(app.text("common.logout"), isPresented: $confirmLogout, titleVisibility: .visible) {
             Button(app.text("common.logout"), role: .destructive) {
                 Task { await app.signOut(); dismiss() }
@@ -53,9 +58,19 @@ struct ControlCenterView: View {
 
     private var connectionCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionTitle(text: app.text("home.status"))
             HStack {
-                StatusPill(label: app.health == nil ? app.text("home.offline") : app.text("home.online"), active: app.health != nil)
+                SectionTitle(text: app.text("home.status"))
+                Button {
+                    showConnection = true
+                } label: {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(NexusTheme.emerald)
+                }
+                .buttonStyle(.plain)
+            }
+            HStack {
+                StatusPill(label: connectionLabel, active: app.connectionState == .reachable)
                 Spacer()
                 if let health = app.health {
                     Text("\(health.service) · v\(health.version)")
@@ -179,6 +194,16 @@ struct ControlCenterView: View {
         }
         .padding(16)
         .glassPanel(app.appearance)
+    }
+
+    private var connectionLabel: String {
+        switch app.connectionState {
+        case .notConfigured: return app.text("server.notConfigured")
+        case .checking: return app.text("common.loading")
+        case .reachable: return app.text("home.online")
+        case .degraded: return app.text("health.degraded")
+        case .offline: return app.text("home.offline")
+        }
     }
 
     private func label(icon: String, text: String) -> some View {

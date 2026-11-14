@@ -5,6 +5,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showAccount = false
     @State private var showSecurity = false
+    @State private var showConnection = false
     @State private var confirmLogout = false
 
     var body: some View {
@@ -22,6 +23,10 @@ struct SettingsView: View {
         .task { await app.refreshHealth() }
         .sheet(isPresented: $showAccount) {
             AccountEditorView()
+                .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showConnection) {
+            ConnectionStatusView()
                 .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showSecurity) {
@@ -125,15 +130,31 @@ struct SettingsView: View {
 
     private var serverCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionTitle(text: app.text("settings.serverInfo"))
-            infoRow(app.text("common.server"), app.baseURLString.isEmpty ? app.text("server.notConfigured") : app.baseURLString)
-            infoRow(app.text("home.status"), app.health == nil ? app.text("home.offline") : app.text("home.online"))
+            HStack {
+                SectionTitle(text: app.text("settings.serverInfo"))
+                Button {
+                    showConnection = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(app.text("connection.title"))
+                        Image(systemName: "chevron.right")
+                    }
+                    .font(.system(size: 9.5, weight: .bold, design: .rounded))
+                    .foregroundStyle(NexusTheme.emerald)
+                }
+                .buttonStyle(.plain)
+            }
+            infoRow(app.text("connection.endpoint"), app.baseURLString.isEmpty ? app.text("server.notConfigured") : app.baseURLString)
+            infoRow(app.text("common.status"), connectionLabel)
             infoRow(app.text("settings.database"), app.health?.database ?? "—")
             infoRow(app.text("settings.gemini"), app.health?.geminiConfigured == true ? app.health?.geminiModel ?? "—" : app.text("common.unavailable"))
             if let message = app.statusMessage {
                 Text(message)
                     .font(.system(size: 9, design: .rounded))
                     .foregroundStyle(NexusTheme.gold)
+            }
+            NexusGhostButton(title: app.text("connection.refresh"), icon: "arrow.clockwise") {
+                Task { await app.refreshHealth() }
             }
         }
         .padding(15)
@@ -194,6 +215,16 @@ struct SettingsView: View {
 
     private var divider: some View {
         Divider().overlay(.white.opacity(0.07))
+    }
+
+    private var connectionLabel: String {
+        switch app.connectionState {
+        case .notConfigured: return app.text("server.notConfigured")
+        case .checking: return app.text("common.loading")
+        case .reachable: return app.text("health.ok")
+        case .degraded: return app.text("health.degraded")
+        case .offline: return app.text("home.offline")
+        }
     }
 
     private var initials: String {

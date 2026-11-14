@@ -314,6 +314,36 @@ private struct ProjectDetailView: View {
                         }
                     }
 
+                    SectionTitle(text: app.text("chats"))
+                    if chats.isEmpty {
+                        Text(app.text("common.noData"))
+                            .font(.system(.caption, design: .rounded))
+                            .foregroundStyle(NexusTheme.muted)
+                    } else {
+                        ForEach(chats) { chat in
+                            HStack(spacing: 9) {
+                                Image(systemName: "bubble.left.and.text.bubble.right")
+                                    .foregroundStyle(NexusTheme.emerald)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(chat.title)
+                                        .font(.system(.caption, design: .rounded).weight(.semibold))
+                                        .foregroundStyle(NexusTheme.text)
+                                        .lineLimit(1)
+                                    Text(chat.lastMessage)
+                                        .font(.system(size: 8.5, design: .monospaced))
+                                        .foregroundStyle(NexusTheme.muted)
+                                        .lineLimit(1)
+                                }
+                                Spacer()
+                                Text("\(chat.messageCount)")
+                                    .font(.system(size: 9, design: .monospaced))
+                                    .foregroundStyle(NexusTheme.gold)
+                            }
+                            .padding(9)
+                            .background(.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        }
+                    }
+
                     NexusPrimaryButton(title: app.text("projects.openAssistant"), icon: "sparkles") {
                         openAssistant()
                     }

@@ -1,12 +1,23 @@
 import Foundation
 import SwiftUI
 
+enum ServerConnectionState: Equatable {
+    case notConfigured
+    case checking
+    case reachable
+    case degraded
+    case offline
+}
+
 @MainActor
 final class AppState: ObservableObject {
     @Published private(set) var token: String?
     @Published private(set) var user: NexusUser?
     @Published var baseURLString: String
     @Published var health: NexusHealth?
+    @Published private(set) var healthBusy = false
+    @Published private(set) var healthCheckedAt: Date?
+    @Published private(set) var healthError: String?
     @Published var isBusy = false
     @Published var statusMessage: String?
     @Published var authError: String?
@@ -36,9 +47,12 @@ final class AppState: ObservableObject {
         guard !trimmed.isEmpty,
               let url = URL(string: trimmed),
               let scheme = url.scheme?.lowercased(),
-              scheme == "https" || scheme == "http",
-              url.host != nil else { return nil }
-        return url
+              let host = url.host?.lowercased(),
+              url.query == nil,
+              url.fragment == nil else { return nil }
+        if scheme == "https" { return url }
+        if scheme == "http", host == "localhost" || host == "127.0.0.1" { return url }
+        return nil
     }
 
     var apiClient: APIClient? {
@@ -48,27 +62,50 @@ final class AppState: ObservableObject {
 
     var isAuthenticated: Bool { token != nil }
 
+    var connectionState: ServerConnectionState {
+        guard serverURL != nil else { return .notConfigured }
+        if healthBusy { return .checking }
+        guard let health else { return .offline }
+        return health.status == "ok" ? .reachable : .degraded
+    }
+
     func configureServer(_ raw: String) async {
-        baseURLString = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleaned = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        baseURLString = cleaned
         guard let url = serverURL else {
-            statusMessage = "The server URL must start with https:// and include a host."
+            UserDefaults.standard.removeObject(forKey: baseKey)
+            health = nil
+            healthCheckedAt = nil
+            healthError = text("auth.invalidServer")
+            statusMessage = text("auth.invalidServer")
             return
         }
         UserDefaults.standard.set(url.absoluteString, forKey: baseKey)
         baseURLString = url.absoluteString
+        authError = nil
         await refreshHealth()
     }
 
     func refreshHealth() async {
         guard let client = apiClient else {
             health = nil
+            healthCheckedAt = nil
+            healthError = text("common.requiredServer")
+            statusMessage = nil
             return
+        }
+        healthBusy = true
+        defer {
+            healthBusy = false
+            healthCheckedAt = Date()
         }
         do {
             health = try await client.health()
+            healthError = nil
             statusMessage = nil
         } catch {
             health = nil
+            healthError = friendly(error)
             statusMessage = friendly(error)
         }
     }

@@ -27,6 +27,11 @@ struct AuthView: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .onAppear { serverText = app.baseURLString }
+        .onChange(of: serverText) { value in
+            if value != app.baseURLString { app.authError = nil }
+        }
+        .onChange(of: email) { _ in app.authError = nil }
+        .onChange(of: password) { _ in app.authError = nil }
     }
 
     private var header: some View {
@@ -82,6 +87,7 @@ struct AuthView: View {
                     .focused($focus, equals: .server)
                     .foregroundStyle(NexusTheme.text)
                     .font(.system(.subheadline, design: .monospaced))
+                    .accessibilityIdentifier("auth.server")
             }
             .padding(14)
             .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -90,8 +96,12 @@ struct AuthView: View {
             HStack {
                 if serverBusy {
                     ProgressView().tint(NexusTheme.emerald)
-                } else if let health = app.health {
-                    StatusPill(label: health.status == "ok" ? app.text("health.ok") : app.text("health.degraded"), active: health.status == "ok")
+                } else if app.connectionState == .reachable {
+                    StatusPill(label: app.text("health.ok"), active: true)
+                } else if app.connectionState == .degraded {
+                    StatusPill(label: app.text("health.degraded"), active: false)
+                } else if app.connectionState == .offline, app.isServerConfigured {
+                    StatusPill(label: app.text("home.offline"), active: false)
                 }
                 Spacer()
                 NexusGhostButton(title: app.text("auth.saveServer"), icon: "arrow.triangle.2.circlepath") {
@@ -101,6 +111,7 @@ struct AuthView: View {
                         serverBusy = false
                     }
                 }
+                .disabled(serverBusy || serverText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             if let message = app.statusMessage {
                 Text(message)
@@ -123,9 +134,11 @@ struct AuthView: View {
             if mode == .register {
                 field(icon: "person", placeholder: app.text("auth.name"), text: $name, focusValue: .name)
                     .textContentType(.name)
+                    .accessibilityIdentifier("auth.name")
             }
             field(icon: "envelope", placeholder: app.text("auth.email"), text: $email, focusValue: .email)
                 .textContentType(.emailAddress)
+                .accessibilityIdentifier("auth.email")
                 .keyboardType(.emailAddress)
             secureField
 
@@ -151,6 +164,7 @@ struct AuthView: View {
                 }
             }
             .disabled(!app.isServerConfigured)
+            .accessibilityIdentifier("auth.submit")
 
             Button {
                 mode = mode == .login ? .register : .login
@@ -187,6 +201,7 @@ struct AuthView: View {
                 .textContentType(mode == .login ? .password : .newPassword)
                 .focused($focus, equals: .password)
                 .foregroundStyle(NexusTheme.text)
+                .accessibilityIdentifier("auth.password")
         }
         .padding(14)
         .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -194,17 +209,11 @@ struct AuthView: View {
     }
 
     private var footer: some View {
-        HStack(spacing: 14) {
-            Text(app.locale == .english ? "العربية" : "English")
-                .font(.system(.caption, design: .rounded).weight(.semibold))
-            Button(app.text("settings.toggleLanguage")) {
-                Task { await app.switchLanguage() }
-            }
-            .font(.system(.caption2, design: .rounded))
-            .foregroundStyle(NexusTheme.emerald)
-            .buttonStyle(.plain)
+        Button(app.text("settings.toggleLanguage")) {
+            Task { await app.switchLanguage() }
         }
-        .foregroundStyle(NexusTheme.muted)
+        .font(.system(.caption, design: .rounded).weight(.semibold))
+        .foregroundStyle(NexusTheme.emerald)
         .padding(.top, 4)
     }
 }

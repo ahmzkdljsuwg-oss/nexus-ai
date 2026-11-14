@@ -4,6 +4,7 @@ struct HomeView: View {
     @EnvironmentObject private var app: AppState
     @State private var selected: NexusModule?
     @State private var showControlCenter = false
+    @State private var showConnection = false
     @State private var security: SecurityStatus?
     @State private var loadError: String?
 
@@ -28,6 +29,7 @@ struct HomeView: View {
             dockBar
         }
         .task { await loadDashboard() }
+        .refreshable { await loadDashboard() }
         .sheet(item: $selected) { module in
             ModuleHost(module: module)
                 .presentationDetents([.large])
@@ -37,6 +39,10 @@ struct HomeView: View {
             ControlCenterView()
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showConnection) {
+            ConnectionStatusView()
+                .presentationDetents([.medium, .large])
         }
     }
 
@@ -128,24 +134,34 @@ struct HomeView: View {
 
     private var systemStrip: some View {
         HStack(spacing: 10) {
-            statusTile(
-                icon: "antenna.radiowaves.left.and.right",
-                label: app.health == nil ? app.text("home.offline") : app.text("home.online"),
-                detail: app.health.map { "\($0.service) \($0.version)" } ?? app.text("server.notConfigured"),
-                active: app.health != nil
-            )
-            statusTile(
-                icon: "cylinder.split.1x2",
-                label: app.text("settings.database"),
-                detail: databaseDetail,
-                active: app.health?.database == "ok"
-            )
-            statusTile(
-                icon: "brain",
-                label: "Gemini",
-                detail: app.health?.geminiConfigured == true ? app.health?.geminiModel ?? "" : app.text("common.unavailable"),
-                active: app.health?.geminiConfigured == true
-            )
+            Button { showConnection = true } label: {
+                statusTile(
+                    icon: "antenna.radiowaves.left.and.right",
+                    label: connectionLabel,
+                    detail: app.health.map { "\($0.service) \($0.version)" } ?? app.text("server.notConfigured"),
+                    active: app.connectionState == .reachable
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("home.connection")
+            Button { showConnection = true } label: {
+                statusTile(
+                    icon: "cylinder.split.1x2",
+                    label: app.text("settings.database"),
+                    detail: databaseDetail,
+                    active: app.health?.database == "ok"
+                )
+            }
+            .buttonStyle(.plain)
+            Button { showConnection = true } label: {
+                statusTile(
+                    icon: "brain",
+                    label: "Gemini",
+                    detail: app.health?.geminiConfigured == true ? app.health?.geminiModel ?? "" : app.text("common.unavailable"),
+                    active: app.health?.geminiConfigured == true
+                )
+            }
+            .buttonStyle(.plain)
         }
     }
 
@@ -185,6 +201,8 @@ struct HomeView: View {
                         appTile(module)
                     }
                     .buttonStyle(AppTileButtonStyle())
+                    .accessibilityIdentifier("module.\(module.rawValue)")
+                    .accessibilityLabel(app.text(module.titleKey))
                 }
             }
             if let loadError {
@@ -242,6 +260,8 @@ struct HomeView: View {
                     .padding(.vertical, 8)
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("dock.\(module.rawValue)")
+                .accessibilityLabel(app.text(module.titleKey))
             }
         }
         .padding(.horizontal, 12)
@@ -257,6 +277,16 @@ struct HomeView: View {
         let source = app.user?.name.isEmpty == false ? app.user?.name : app.user?.email
         let parts = (source ?? "N").split(separator: " ")
         return parts.prefix(2).compactMap { $0.first.map(String.init) }.joined().uppercased()
+    }
+
+    private var connectionLabel: String {
+        switch app.connectionState {
+        case .notConfigured: return app.text("server.notConfigured")
+        case .checking: return app.text("common.loading")
+        case .reachable: return app.text("home.online")
+        case .degraded: return app.text("health.degraded")
+        case .offline: return app.text("home.offline")
+        }
     }
 
     private var databaseDetail: String {

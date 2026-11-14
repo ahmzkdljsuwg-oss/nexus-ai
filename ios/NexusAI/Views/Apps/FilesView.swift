@@ -10,6 +10,7 @@ struct FilesView: View {
     @State private var projectFilter: String?
     @State private var showCreate = false
     @State private var editing: NexusFile?
+    @State private var deleteTarget: NexusFile?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -28,6 +29,15 @@ struct FilesView: View {
                 await create(path: path, content: content, isFolder: folder, projectID: projectID)
             }
             .presentationDetents([.large])
+        }
+        .confirmationDialog(app.text("files.deleteConfirm"), isPresented: Binding(
+            get: { deleteTarget != nil },
+            set: { if !$0 { deleteTarget = nil } }
+        ), titleVisibility: .visible) {
+            Button(app.text("common.delete"), role: .destructive) {
+                if let target = deleteTarget { Task { await delete(file: target) } }
+            }
+            Button(app.text("common.cancel"), role: .cancel) { deleteTarget = nil }
         }
         .sheet(item: $editing) { file in
             FileEditorView(file: file) { path, content in
@@ -58,7 +68,7 @@ struct FilesView: View {
                     .lineLimit(1)
                 Spacer()
                 Menu {
-                    Button("All projects") { projectFilter = nil; Task { await load() } }
+                    Button(app.text("server.allProjects")) { projectFilter = nil; Task { await load() } }
                     ForEach(projects) { project in
                         Button(project.name) { projectFilter = project.id; currentFolder = nil; Task { await load() } }
                     }
@@ -156,7 +166,7 @@ struct FilesView: View {
         .buttonStyle(.plain)
         .contextMenu {
             Button(app.text("common.rename")) { rename(file) }
-            Button(app.text("common.delete"), role: .destructive) { Task { await delete(file: file) } }
+            Button(app.text("common.delete"), role: .destructive) { deleteTarget = file }
         }
     }
 

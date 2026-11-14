@@ -142,6 +142,7 @@ struct EmptyStateView: View {
 }
 
 struct InlineError: View {
+    @EnvironmentObject private var app: AppState
     let message: String
     var retry: (() -> Void)? = nil
 
@@ -154,7 +155,7 @@ struct InlineError: View {
                 .foregroundStyle(NexusTheme.text.opacity(0.9))
                 .frame(maxWidth: .infinity, alignment: .leading)
             if let retry {
-                Button("Retry", action: retry)
+                Button(app.text("common.retry"), action: retry)
                     .font(.system(.caption2, design: .rounded).weight(.bold))
                     .foregroundStyle(NexusTheme.emerald)
             }
