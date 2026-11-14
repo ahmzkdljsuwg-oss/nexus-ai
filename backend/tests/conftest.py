@@ -8,8 +8,9 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
+EXTERNAL_DB = os.getenv("NEXUS_TEST_DATABASE_URL", "").strip()
 TEST_DB = Path(f"/tmp/nexus-test-{uuid4().hex}.db")
-os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{TEST_DB}"
+os.environ["DATABASE_URL"] = EXTERNAL_DB or f"sqlite+aiosqlite:///{TEST_DB}"
 os.environ["JWT_SECRET"] = "test-secret-key-that-is-long-enough"
 os.environ["ENVIRONMENT"] = "test"
 os.environ["GEMINI_API_KEY"] = ""

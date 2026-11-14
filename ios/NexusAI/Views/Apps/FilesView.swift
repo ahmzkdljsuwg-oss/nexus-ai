@@ -178,8 +178,8 @@ struct FilesView: View {
     }
 
     private func goUp() {
-        guard let currentFolder else { return }
-        let parts = currentFolder.split(separator: "/")
+        guard let folder = currentFolder else { return }
+        let parts = folder.split(separator: "/")
         currentFolder = parts.count <= 1 ? nil : "/" + parts.dropLast().joined(separator: "/")
     }
 
