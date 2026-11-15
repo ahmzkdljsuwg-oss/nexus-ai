@@ -1,0 +1,28 @@
+appId: ai.nexus.app
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "MARKETS"
+    timeout: 30000
+- assertVisible: "NEXUS AI"
+- tapOn: "Settings"
+- assertVisible: "SETTINGS"
+- takeScreenshot: shots/maestro-01-settings
+- tapOn: "Signals"
+- assertVisible: "RECOMMENDATIONS"
+- tapOn: "History"
+- assertVisible: "TRADE HISTORY"
+- tapOn: "Chat"
+- assertVisible: "GEMINI CHAT"
+- tapOn: "Home"
+- assertVisible: "MARKETS"
+- tapOn: "Smarty Market"
+- assertVisible: "ANALYSIS MODE"
+- tapOn: "Strong analysis"
+- assertVisible: "TRADE DURATION"
+- takeScreenshot: shots/maestro-02-market-strong
+- tapOn: "‹"
+- assertVisible: "MARKETS"
+- tapOn: "⚙"
+- assertVisible: "SETTINGS"

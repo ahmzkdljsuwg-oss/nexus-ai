@@ -12,6 +12,7 @@ export default function SplashScreen({ onFinish }) {
   const [elapsed, setElapsed] = useState(false);
   const [forced, setForced] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const handedOff = useRef(false);
   const opacity = useRef(new Animated.Value(1)).current;
   const float = useRef(new Animated.Value(0)).current;
   const progress = useRef(new Animated.Value(0)).current;
@@ -44,19 +45,19 @@ export default function SplashScreen({ onFinish }) {
   }, [float, glow, progress]);
 
   useEffect(() => {
-    if (!splashCanFinish({ elapsed, ready, booting, forced }) || leaving) return;
+    if (handedOff.current || !splashCanFinish({ elapsed, ready, booting, forced })) return;
+    handedOff.current = true;
     setLeaving(true);
-    Animated.timing(opacity, { toValue: 0, duration: 420, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
-    const handoff = setTimeout(() => { if (onFinish) onFinish(); }, 520);
-    return () => clearTimeout(handoff);
-  }, [booting, elapsed, forced, leaving, onFinish, opacity, ready]);
+    Animated.timing(opacity, { toValue: 0, duration: 420, easing: Easing.out(Easing.quad), useNativeDriver: true })
+      .start(() => { if (onFinish) onFinish(); });
+  }, [booting, elapsed, forced, onFinish, opacity, ready]);
 
   const status = splashStatus({ baseUrl, connection, booting, language });
   const width = progress.interpolate({ inputRange: [0, 1], outputRange: ['4%', '100%'] });
   const translateY = float.interpolate({ inputRange: [0, 1], outputRange: [0, -7] });
 
   return (
-    <Animated.View style={[styles.root, { opacity }]} pointerEvents="auto">
+    <Animated.View style={[styles.root, { opacity }]} pointerEvents={leaving ? "none" : "auto"}>
       <Animated.View style={[styles.glowTop, { opacity: glow }]} />
       <View style={styles.glowBottom} />
       <View style={styles.grid} />

@@ -68,6 +68,21 @@ jobs:
           xcrun simctl spawn "$DEVICE" log show --last 3m --predicate 'process == "NEXUSAI"' > shots/app.log || true
           ls -lh shots
 
+      - name: Install Maestro
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/maestro.zip https://github.com/mobile-dev-inc/maestro/releases/latest/download/maestro.zip
+          unzip -q /tmp/maestro.zip -d /tmp/maestro
+          echo "/tmp/maestro/maestro/bin" >> "$GITHUB_PATH"
+          /tmp/maestro/maestro/bin/maestro --version
+
+      - name: Native tap and navigation test
+        run: |
+          set -o pipefail
+          maestro test .maestro/nexus-touch.yml --format junit --output shots/maestro.xml
+          cp shots/maestro-01-settings.png shots/04-settings-tap.png
+          cp shots/maestro-02-market-strong.png shots/05-market-strong.png
+
       - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v4
