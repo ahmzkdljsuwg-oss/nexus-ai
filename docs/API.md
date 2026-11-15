@@ -1,65 +1,41 @@
 # NEXUS AI API
 
-Base URL: `https://<server>/api`
-Auth: `Authorization: Bearer <jwt>` لكل المسارات عدا register/login/health.
+Base URL: عنوان خدمة Railway، وكل المسارات تحت `/api`.
+لا يوجد مصادقة مستخدم في نسخة التوصيات الحالية؛ لا تُستخدم لحفظ بيانات شخصية.
 
-| Method | Path | الغرض | Auth |
-|---|---|---|---|
-| GET | `/health` | حالة الخادم والقاعدة وGemini | لا |
-| POST | `/auth/register` | تسجيل حساب | لا |
-| POST | `/auth/login` | تسجيل دخول وإصدار JWT | لا |
-| POST | `/auth/logout` | إلغاء الجلسة الحالية | نعم |
-| GET | `/auth/me` | بيانات الحساب | نعم |
-| GET | `/auth/sessions` | قائمة الجلسات | نعم |
-| DELETE | `/auth/sessions/{id}` | إلغاء جلسة | نعم |
-| GET | `/account` | بيانات الحساب | نعم |
-| PATCH | `/account` | تعديل الاسم/كلمة المرور (يلغي الجلسات عند تغيير كلمة المرور) | نعم |
-| POST | `/account/change-password` | تغيير كلمة المرور فقط | نعم |
-| GET | `/settings` | التفضيلات | نعم |
-| PATCH | `/settings` | اللغة/المظهر/الصوت/الصوت المساعد | نعم |
-| GET | `/security/status` | حالة الجلسات والبيانات والفحوصات | نعم |
-| GET | `/projects` | قائمة المشاريع | نعم |
-| POST | `/projects` | إنشاء مشروع | نعم |
-| GET | `/projects/{id}` | مشروع واحد | نعم |
-| PATCH | `/projects/{id}` | تعديل مشروع | نعم |
-| DELETE | `/projects/{id}` | حذف مشروع | نعم |
-| GET | `/files` | قائمة الملفات (فلترة `project_id` و`folder`) | نعم |
-| POST | `/files` | إنشاء ملف | نعم |
-| GET | `/files/{id}` | قراءة ملف | نعم |
-| PATCH | `/files/{id}` | تعديل/إعادة تسمية/نقل | نعم |
-| DELETE | `/files/{id}` | حذف ملف | نعم |
-| GET | `/chats` | قائمة المحادثات | نعم |
-| POST | `/chats` | إنشاء محادثة | نعم |
-| GET | `/chats/{id}` | محادثة مع رسائلها | نعم |
-| PATCH | `/chats/{id}` | إعادة تسمية/ربط مشروع | نعم |
-| DELETE | `/chats/{id}` | حذف محادثة | نعم |
-| POST | `/assistant/chat` | سؤال Gemini وسياق المشروع/الملف | نعم |
-| GET | `/tools` | الأدوات المتاحة فعلياً | نعم |
+| Method | Path | الغرض |
+|---|---|---|
+| GET | `/api/health` | حالة الخدمة، القاعدة، والمزودون (بدون أسرار) |
+| GET | `/api/markets` | الأسواق السبعة وملخص الحالة |
+| GET | `/api/markets/{key}` | لقطة سوق أو أصل، مع الشموع |
+| POST | `/api/analyse` | تحليل كامل وإصدار توصية |
+| GET | `/api/recommendations` | أفضل التوصيات الجاهزة |
+| GET | `/api/history?limit=50` | السجل والإحصائيات |
+| POST | `/api/chat` | محادثة Gemini (منفصلة عن التحليل) |
 
-## Assistant request
+مفاتيح `key`: `OTC`, `SMARTY`, `FOOTBALL`, `LUXURY`, `AI`, `CRICKET`, `FOREX`.
+
+## POST /api/analyse
 
 ```json
 {
-  "message": "لخّص ملف notes.md وأنشئ قائمة مهام",
-  "chat_id": null,
-  "project_id": null,
-  "mode": "text"
+  "market": "FOREX",
+  "asset": "EUR/USD",
+  "duration_mode": "auto",
+  "duration": null,
+  "language": "ar"
 }
 ```
 
-Response:
+- `duration_mode=auto`: يحلل الشموع ويختار المدة مع ذكر السبب.
+- `duration_mode=manual`: يستخدم `duration` بالثواني (5–3600) ولا يغيّره.
 
-```json
-{
-  "chat_id": "...",
-  "answer": "...",
-  "model": "gemini-2.5-flash",
-  "actions": ["create_file"],
-  "created_files": ["/tasks.md"],
-  "used_context": ["project:...", "file:..."]
-}
-```
+الاستجابة تحتوي `direction` (`UP` / `DOWN` / `NO TRADE`)، `reasons`، `duration_label`، `entry`، `evidence_score`، `confidence`، و`source`.
 
-- بدون `GEMINI_API_KEY` → `503 {"detail":"GEMINI_NOT_CONFIGURED"}` ولا يوجد رد وهمي.
-- كل مشروع له سياقه المستقل؛ لا يمكن تمرير `project_id` يملكه مستخدم آخر.
-- أدوات Gemini محصورة في إنشاء/تعليم الملفات والمشاريع داخل حساب المستخدم الحالي.
+## الأخطاء
+
+- `503 DATA_UNAVAILABLE`: المصدر غير متاح أو البيانات قديمة/غير صالحة؛ لا توصية.
+- `503 GEMINI_UNAVAILABLE`: الدردشة بلا مفتاح أو فشل مؤقت.
+- `429`: تجاوز حد الطلبات.
+
+لا تُعاد المفاتيح أو قيمها في أي استجابة أو سجل.

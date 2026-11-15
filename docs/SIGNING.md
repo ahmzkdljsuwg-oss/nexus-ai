@@ -30,21 +30,21 @@ Bundle Identifier ثابت: `ai.nexus.app` (لا يُطلب تغييره ولا 
 ## خطوات التشغيل
 
 1. أضف الأسرار الأربعة أعلاه.
-2. Actions → **Build Signed iOS App** → Run workflow → اختر `ad-hoc`.
+2. Actions → **Build Signed Expo iOS App** → Run workflow → اختر `ad-hoc`.
 3. ينفّذ الـ workflow:
    - استيراد الشهادة والملف التعريفي والتحقق من تطابق Team وBundle ID.
    - بناء Release وArchive بتوقيع يدوي.
    - تصدير IPA موقّع.
    - `codesign --verify --deep --strict` والتحقق من `embedded.mobileprovision` ورفض أي توقيع ad-hoc من الرابط.
-   - رفع `NexusAI-signed-ipa` مع SHA256.
+   - رفع `NEXUSAI-signed-ipa` مع SHA256.
 4. نزّل الـ artifact من صفحة التشغيل.
 
 ## التثبيت عبر ESign
 
-1. انقل `NexusAI-signed.ipa` إلى iPhone.
+1. انقل `NEXUSAI-signed.ipa` إلى iPhone.
 2. افتح ESign → Import → اختر الملف.
 3. إن ظهرت حاجة لإعادة توقيع، استخدم نفس `.p12` و`.mobileprovision` داخل ESign.
-4. ثبّت، ثم افتح التطبيق وأدخل رابط Railway في شاشة تسجيل الدخول.
+4. ثبّت، ثم افتح التطبيق وأدخل رابط Railway في شاشة الإعدادات.
 
 لا يمكن إعلان نجاح التثبيت قبل تنفيذه على جهاز فعلي. الـ workflow يثبت سلامة التوقيع داخل الـ archive فقط.
 

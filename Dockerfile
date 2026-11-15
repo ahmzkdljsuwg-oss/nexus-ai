@@ -4,15 +4,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 
-WORKDIR /srv
-RUN addgroup --system nexus && adduser --system --ingroup nexus nexus
-
+WORKDIR /app
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
-COPY backend/app ./app
-RUN chown -R nexus:nexus /srv
-USER nexus
-
+COPY backend/ .
 EXPOSE 8080
 CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"]

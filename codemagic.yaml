@@ -1,12 +1,13 @@
 workflows:
-  ios-unsigned:
-    name: NEXUS AI iOS unsigned IPA
+  expo-ios-unsigned:
+    name: NEXUS AI Expo iOS unsigned IPA
     instance_type: mac_mini_m2
     max_build_duration: 60
     environment:
-      xcode: latest
+      node: 20
       vars:
-        XCODE_SCHEME: NexusAI
+        CI: "1"
+        EXPO_NO_TELEMETRY: "1"
     triggering:
       events:
         - push
@@ -14,30 +15,28 @@ workflows:
         - pattern: main
           include: true
     scripts:
-      - name: Generate Xcode project
+      - name: Install and test
         script: |
-          brew install xcodegen
-          cd ios
-          xcodegen generate
-      - name: Compile simulator build
+          cd mobile
+          npm ci
+          npm test
+      - name: Generate iOS project
         script: |
-          cd ios
-          xcodebuild -project NexusAI.xcodeproj -scheme "$XCODE_SCHEME" \
-            -configuration Debug -destination 'generic/platform=iOS Simulator' \
-            -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
-      - name: Archive unsigned device build
+          cd mobile
+          npx expo prebuild --platform ios --no-install
+      - name: Install pods
         script: |
-          cd ios
-          xcodebuild -project NexusAI.xcodeproj -scheme "$XCODE_SCHEME" \
+          cd mobile/ios
+          pod install --repo-update
+      - name: Build unsigned IPA
+        script: |
+          cd mobile/ios
+          xcodebuild -workspace NEXUSAI.xcworkspace -scheme NEXUSAI \
             -configuration Release -destination 'generic/platform=iOS' \
             -archivePath build/NexusAI.xcarchive \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" archive
-      - name: Package and validate IPA
-        script: |
-          cd ios
           mkdir -p build/Payload
-          cp -R build/NexusAI.xcarchive/Products/Applications/NexusAI.app build/Payload/
-          ditto -c -k --sequesterRsrc --keepParent build/Payload build/NexusAI-unsigned.ipa
-          unzip -l build/NexusAI-unsigned.ipa | grep 'Payload/NexusAI.app/Info.plist'
+          cp -R build/NexusAI.xcarchive/Products/Applications/NEXUSAI.app build/Payload/
+          ditto -c -k --sequesterRsrc --keepParent build/Payload build/NEXUSAI-unsigned.ipa
     artifacts:
-      - ios/build/NexusAI-unsigned.ipa
+      - mobile/ios/build/NEXUSAI-unsigned.ipa

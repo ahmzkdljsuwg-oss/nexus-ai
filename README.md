@@ -1,101 +1,83 @@
 # NEXUS AI
 
-**نظام تشغيل ذكي مصغّر داخل iPhone** — تطبيق iOS + خادم FastAPI حقيقي + PostgreSQL + Gemini على الخادم فقط.
+**NEXUS AI** هو تطبيق iPhone لتحليل الأسواق وتقديم توصيات تداول (UP / DOWN / NO TRADE)، مع Backend على FastAPI وسبعة أسواق منفصلة:
 
-> هذا المستودع يحتوي على المنتج الكامل: تطبيق iOS، الخادم، قاعدة البيانات، الاختبارات، ومسار بناء IPA عبر GitHub Actions.
-> لا يوجد موقع ويب ولا لوحة ويب منفصلة؛ كل شيء داخل التطبيق.
->
-> تطبيق المنتج الحالي (الأسواق السبعة والتحليل والتوصيات) موجود في `mobile/` باستخدام Expo/React Native. نسخة SwiftUI الأصلية باقية في `ios/` ولم تُحذف.
+`OTC` · `SMARTY` · `FOOTBALL` · `LUXURY` · `AI INDEX` · `CRICKET` · `FOREX`
+
+> التطبيق للتحليل والتوصيات فقط، ولا ينفّذ صفقات.
 
 ---
 
-## 1. ما الذي يعمل فعلياً (مُختبر)
+## 1. حالة النسخة الحالية
 
-| الوظيفة | الحالة | الدليل |
+| العنصر | الحالة | الدليل |
 |---|---|---|
-| تسجيل حساب جديد | ✅ يعمل | `tests/test_api.py::test_register_login_and_me` |
-| تسجيل الدخول والجلسات | ✅ يعمل | `test_register_login_and_me`, `test_session_inventory_and_logout` |
-| عزل بيانات المستخدمين | ✅ يعمل | `test_projects_crud_and_user_isolation`, `test_files_are_isolated_between_users` |
-| المشاريع (إنشاء/قراءة/تعديل/حذف) | ✅ يعمل | `test_projects_crud_and_user_isolation` |
-| الملفات الذكية (إنشاء/تعديل/حذف/مجلدات) | ✅ يعمل | `test_files_create_read_update_rename_delete_and_traversal` |
-| المحادثات وسجلها | ✅ يعمل | `test_chats_store_messages_and_are_isolated` |
-| الأدوات ومركز الأمان والإعدادات | ✅ يعمل | `test_tools_and_security_surfaces_are_real` |
-| تحديث بيانات الحساب وكلمة المرور | ✅ يعمل | `test_account_update_name_and_password` |
-| مساعد Gemini | ⚠️ الكود جاهز، يحتاج `GEMINI_API_KEY` | اختبار حقيقي تلقائي عند توفر المفتاح |
-| ربط التطبيق بالخادم | ⚠️ يحتاج Backend منشوراً | عنوان الخادم يُدخل داخل التطبيق ويُتحقق منه |
-| بناء IPA | ✅ تم بناؤه والتحقق منه | `docs/IPA-BUILD-REPORT.md` |
-| GitHub Actions (macOS) | ✅ نجح | `.github/workflows/expo-ios-build.yml`, run `43714673687` |
+| Backend FastAPI | ✅ يعمل | 18 اختباراً ناجحاً |
+| اختبارات HTTP للعقود | ✅ تعمل | `backend/tests/test_http_contract.py` |
+| تحليل الشموع والمؤشرات وSMC | ✅ يعمل | `backend/engines/` |
+| Gemini + Mistral ومقارنة النتائج | ⚠️ الكود جاهز | يحتاج `GEMINI_API_KEY` و`MISTRAL_API_KEY` حقيقيين |
+| الأسواق السبعة منفصلة | ✅ في التطبيق والـAPI | `/api/markets` |
+| بيانات FOREX / GOLD | ⚠️ تعتمد على المفتاح | Twelve Data أو Yahoo fallback |
+| بيانات OTC / SMARTY / FOOTBALL / LUXURY / AI / CRICKET | ⚠️ تحتاج جسراً حقيقياً | `EO_BRIDGE_URL` و`EO_BRIDGE_KEY` أو `MT5_BRIDGE_URL` |
+| بناء IPA | ✅ تم بناؤه والتحقق منه | `NEXUS-AI.ipa` + `docs/IPA-BUILD-REPORT.md` |
+| توقيع IPA | ❌ لم يتم | يحتاج شهادة Apple وProvisioning Profile |
+| نشر Railway | ❌ لم يتم | يحتاج `RAILWAY_TOKEN` أو ربط الحساب |
 
-**نتيجة آخر تشغيل للاختبارات:** Backend `18 passed`، وMobile `3 passed`، وExpo iOS export ناجح — التفاصيل في `docs/TEST-REPORT.md`.
+**قاعدة صريحة:** عند غياب مصدر بيانات حقيقي أو كافٍ، يرجع الـBackend خطأ `DATA_UNAVAILABLE` أو توصية `NO TRADE`، ولا يخترع سعراً أو شمعة أو توصية. كما لا يعرض التطبيق حالة `ONLINE` قبل التحقق من رابط الخادم.
 
 ---
 
 ## 2. الهيكل
 
 ```
-nexus-ai/
-├── backend/
+NEXUS-AI/
+├── backend/                     # الـBackend الحالي (FastAPI)
 │   ├── app/
-│   │   ├── main.py              # FastAPI + CORS + health
-│   │   ├── config.py            # Settings من متغيرات البيئة
-│   │   ├── db.py                # SQLAlchemy async engine/session
-│   │   ├── models.py            # User, Session, Project, FileEntry, Chat, Message
-│   │   ├── schemas.py           # Pydantic contracts
-│   │   ├── deps.py              # Bearer auth + ownership
-│   │   ├── security.py          # bcrypt + JWT
-│   │   ├── routers/             # auth, account, projects, files, chats, assistant, tools
-│   │   └── services/            # gemini.py, assistant.py
-│   └── tests/                   # 18 اختباراً (17 نشط + 1 حقيقي اختياري)
-├── mobile/                      # تطبيق المنتج: Expo / React Native
+│   │   ├── main.py              # /api/health, markets, analyse, recommendations, history, chat
+│   │   ├── market_service.py    # تنسيق الأسواق والمصادر والتحليل
+│   │   ├── ai_clients.py        # Gemini + Mistral
+│   │   ├── db.py                # SQLAlchemy + SQLite/PostgreSQL
+│   │   └── schemas.py
+│   ├── engines/                 # التحليل الفني وهيكل السوق
+│   ├── providers/               # twelve data, yahoo, eobridge, mt5, swissquote
+│   ├── tests/                   # 18 اختباراً
+│   └── Dockerfile / railway.json / requirements.txt / .env.example
+├── mobile/                      # تطبيق iPhone (Expo / React Native)
 │   ├── App.js
 │   ├── src/screens/             # Home, MarketDetail, Recommendations, History, Chat, Settings
 │   ├── src/state/               # Backend URL + حالة الاتصال
-│   └── tests/                   # اختبارات منطق العميل
-├── ios/
-│   ├── project.yml              # XcodeGen (بديل منظم لملف pbxproj)
-│   └── NexusAI/
-│       ├── NexusAIApp.swift
-│       ├── Core/                # Models, Theme, Localization, APIClient, AppState, Keychain, VoiceRecognizer
-│       ├── Components/          # المكونات البصرية المشتركة
-│       ├── Views/               # Home, Auth, ControlCenter
-│       └── Views/Apps/          # Assistant, Files, Projects, Studio, Security, Store, Settings
-├── .github/workflows/           # iOS build + signed build
-├── docs/                        # تقرير الاختبار، API، النشر، دليل IPA
-├── Dockerfile
+│   └── tests/                   # 3 اختبارات منطق
+├── ios/                         # نسخة SwiftUI الأصلية (محفوظة، غير مستخدمة في بناء IPA الحالي)
+├── backend-legacy/              # Backend سابق محفوظ للمرجع فقط
+├── docs/                        # تقارير البناء والاختبار والتوقيع ومصادر البيانات
+├── .github/workflows/           # CI + بناء IPA على macOS
+├── Dockerfile                   # نشر من جذر المستودع
 ├── railway.json
-├── .env.example
-└── README.md
+└── .env.example                 # أسماء المتغيرات فقط، بدون أسرار
 ```
+
+> `backend-legacy/` غير مستخدم في النشر ولا في التطبيق. أُبقي للمرجع فقط.
 
 ---
 
-## 3. تشغيل الخادم محلياً
+## 3. التشغيل المحلي
+
+### Backend
 
 ```bash
 cd backend
-python3 -m venv .venv
+python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt -r requirements-dev.txt
-cp ../.env.example .env
-# عدّل DATABASE_URL و JWT_SECRET
-uvicorn app.main:app --reload --port 8080
+pip install -r requirements.txt
+cp .env.example .env
+uvicorn app.main:app --reload --port 8000
 ```
 
-- الصحة: `GET http://localhost:8080/api/health`
-- التوثيق التفاعلي: `http://localhost:8080/api/docs`
-- اختبارات: `pytest -q`
+- الصحة: `http://localhost:8000/api/health`
+- الوثائق: `http://localhost:8000/docs`
+- الأسواق: `http://localhost:8000/api/markets`
 
-للاختبار على SQLite السريع:
-
-```bash
-DATABASE_URL=sqlite+aiosqlite:///./nexus.db JWT_SECRET=dev-secret uvicorn app.main:app --port 8080
-```
-
----
-
-## 4. تشغيل تطبيق iPhone
-
-### تطبيق Expo (المنتج الحالي)
+### التطبيق
 
 ```bash
 cd mobile
@@ -104,9 +86,110 @@ npm test
 npx expo start
 ```
 
-لبناء نسخة iOS محلية على macOS:
+افتح الإعدادات داخل التطبيق وأدخل رابط الـBackend (مثل `https://your-service.up.railway.app`). لا يوجد رابط إنتاجي مثبت داخل التطبيق ولا `localhost` كقيمة افتراضية.
+
+---
+
+## 4. واجهة الـAPI
+
+| الطريقة | المسار | الوظيفة |
+|---|---|---|
+| GET | `/api/health` | حالة الخدمة وقاعدة البيانات والمزودين |
+| GET | `/api/markets` | ملخص الأسواق السبعة |
+| GET | `/api/markets/{key}` | لقطة سوق/أصل مع الشموع |
+| POST | `/api/analyse` | تحليل كامل وإصدار توصية |
+| GET | `/api/recommendations` | أفضل التوصيات الجاهزة |
+| GET | `/api/history` | السجل والإحصائيات |
+| POST | `/api/chat` | محادثة Gemini منفصلة عن محرك التحليل |
+
+مثال `POST /api/analyse`:
+
+```json
+{
+  "market": "FOREX",
+  "asset": "EUR/USD",
+  "duration_mode": "auto",
+  "duration": null,
+  "language": "ar"
+}
+```
+
+`duration_mode`: `auto` (تحليل الوقت حسب الشمعة) أو `manual` مع `duration` بالثواني (5–3600).
+
+---
+
+## 5. مصادر البيانات
+
+| السوق | المصدر | الحالة |
+|---|---|---|
+| FOREX | Twelve Data، ثم Yahoo fallback | يحتاج `TWELVE_DATA_API_KEY` |
+| OTC | جسر ExpertOption | يحتاج `EO_BRIDGE_URL` + `EO_BRIDGE_KEY` |
+| SMARTY | جسر ExpertOption / MT5 | يحتاج جسراً يثبت دعم Smarty |
+| FOOTBALL / LUXURY / AI INDEX / CRICKET | جسر ExpertOption / MT5 | لا تُستخدم أسعار بديلة |
+| GOLD | Twelve Data / Yahoo | يعتمد على تغطية الخطة |
+
+التفاصيل والقيود في `docs/DATA-SOURCES.md`. لا يُعتبر أي سوق مدعوماً لمجرد وجود اسمه في القائمة.
+
+---
+
+## 6. متغيرات البيئة
+
+كل الأسماء في `.env.example`، والقيم تُضبط في Railway Variables أو محلياً في `.env` غير المرفوع:
+
+```
+TWELVE_DATA_API_KEY=
+EO_BRIDGE_URL=
+EO_BRIDGE_KEY=
+MT5_BRIDGE_URL=
+MT5_BRIDGE_KEY=
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.0-flash
+MISTRAL_API_KEY=
+MISTRAL_MODEL=mistral-small-latest
+DATABASE_URL=sqlite+aiosqlite:///./nexus.db
+CORS_ORIGINS=*
+LOG_LEVEL=INFO
+SCANNER_ENABLED=true
+HISTORY_LIMIT=200
+REQUEST_MIN_INTERVAL=1.0
+```
+
+لإنتاج Railway استخدم PostgreSQL:
+
+```
+DATABASE_URL=postgresql+asyncpg://USER:PASSWORD@HOST:PORT/railway
+```
+
+لا تضع أي مفتاح داخل تطبيق iPhone أو GitHub أو السجلات.
+
+---
+
+## 7. النشر على Railway
+
+1. أنشئ مشروعاً جديداً واربط مستودع GitHub.
+2. أضف خدمة **PostgreSQL**.
+3. من خدمة Backend أضف Reference لـ `DATABASE_URL` من خدمة PostgreSQL.
+4. أضف المتغيرات السرية أعلاه.
+5. اترك **Root Directory** فارغاً (جذر المستودع) لأن `Dockerfile` الجذر ينسخ `backend/`، أو اضبطه على `backend` لاستخدام `backend/Dockerfile`.
+6. Start Command: `sh -c 'uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}'`.
+7. Healthcheck: `/api/health`.
+8. بعد النشر تحقق فعلياً:
+   ```bash
+   curl https://<service>.up.railway.app/api/health
+   curl https://<service>.up.railway.app/api/markets
+   ```
+9. أدخل نفس الرابط في إعدادات التطبيق.
+
+لم يُنفّذ النشر من مساحة العمل، لذلك لا توجد خدمة إنتاجية مُعلنة بعد.
+
+---
+
+## 8. بناء IPA والتوقيع
+
+### بناء غير موقّع
 
 ```bash
+cd mobile
 npx expo prebuild --platform ios --no-install
 cd ios && pod install
 xcodebuild -workspace NEXUSAI.xcworkspace -scheme NEXUSAI \
@@ -114,88 +197,37 @@ xcodebuild -workspace NEXUSAI.xcworkspace -scheme NEXUSAI \
   CODE_SIGNING_ALLOWED=NO archive
 ```
 
-أو شغّل workflow `Build Expo iOS IPA` من GitHub Actions؛ ينتج `NEXUSAI-unsigned-ipa` artifact.
+أو شغّل workflow **Build Expo iOS IPA** على GitHub Actions (macOS 15).
 
-### تطبيق SwiftUI الأصلي
+الملف الحالي:
 
-المتطلبات: macOS + Xcode 15+ + XcodeGen.
+- `NEXUS-AI.ipa` — 5,086,426 بايت
+- SHA-256: `764b08b606de63226cca4c4ff563e192af4d823f627a2150a1977c954da5be22`
+- Bundle ID: `ai.nexus.app`
+- arm64، iOS 15.1+
+- **غير موقّع** ولم يُختبر تثبيته على جهاز
+
+### التوقيع
+
+راجع `docs/ESIGN-INSTALL.md` و`docs/SIGNING.md`. تحتاج:
+
+- شهادة Apple صالحة (`.p12` + كلمة المرور)
+- Provisioning Profile يطابق `ai.nexus.app`
+- UDID الجهاز إن كان Ad Hoc
+
+بدونها يبقى الملف غير موقّع، ولا يصح وصفه بأنه جاهز للتثبيت.
+
+---
+
+## 9. الاختبارات
 
 ```bash
-brew install xcodegen
-cd ios
-xcodegen generate
-open NexusAI.xcodeproj
+# Backend
+cd backend && python -m pytest -q
+# Mobile
+cd mobile && npm test
 ```
 
-- اختر فريق التوقيع (Signing & Capabilities) إن أردت التشغيل على جهاز حقيقي.
-- شغّل على محاكي أو جهاز.
-- في شاشة الدخول اكتب عنوان الخادم، مثل `https://your-service.up.railway.app` أو `http://localhost:8080` على المحاكي.
+النتائج الموثقة في `docs/TEST-REPORT.md` و`docs/NEXUS-AI-FINAL-REPORT.md`.
 
-> **مهم:** لا يوجد مفتاح Gemini داخل التطبيق. التطبيق يتحدث مع خادم NEXUS فقط.
-
----
-
-## 5. النشر على Railway
-
-1. أنشئ خدمة **PostgreSQL** في نفس المشروع.
-2. أنشئ خدمة من مستودع GitHub هذا، وحدد **Root Directory = `backend`**.
-3. Railway يلتقط `railway.json` و `Dockerfile` تلقائياً. Start: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
-4. أضف Variables:
-
-| المتغير | إلزامي | الوصف |
-|---|---|---|
-| `DATABASE_URL` | نعم | من خدمة Postgres — Railway يوفره تلقائياً عند الربط |
-| `JWT_SECRET` | نعم | نص عشوائي طويل (مثال: `openssl rand -hex 48`) |
-| `GEMINI_API_KEY` | لتشغيل المساعد | مفتاح Google AI Studio، يبقى على الخادم |
-| `GEMINI_MODEL` | لا | الافتراضي `gemini-2.5-flash` |
-| `ENVIRONMENT` | نعم | `production` |
-| `LOG_LEVEL` | لا | `INFO` |
-| `CORS_ORIGINS` | لا | الافتراضي `*` (التطبيق الأصلي لا يحتاج CORS) |
-
-5. تحقق: `curl https://<your-service>/api/health` ويجب أن يعيد `"database":"ok"` و `"gemini_configured":true` بعد إضافة المفتاح.
-6. افتح التطبيق واكتب عنوان الخادم.
-
-> لم يُنشر هذا الخادم تلقائياً من بيئة العمل لأن نشر Railway يتطلب صلاحية حسابك ومفتاح Gemini الحقيقي. الخطوات أعلاه كاملة ومطابقة لملفات المشروع.
-
----
-
-## 6. الأمان
-
-- كلمات المرور: bcrypt (12 rounds).
-- الجلسات: JWT موقّع بـ `JWT_SECRET`، وقاعدة البيانات تحتفظ بجلسة قابلة للإلغاء.
-- كل استعلام مشروع/ملف/محادثة يتحقق من `user_id` — لا وصول عابر للحسابات.
-- تغيير كلمة المرور يُلغي الجلسات النشطة (`PATCH /api/account`).
-- لا تُسجَّل كلمة المرور أو التوكن أو `GEMINI_API_KEY` في السجلات.
-- تطبيق iOS يخزّن التوكن في Keychain (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`).
-
----
-
-## 7. دليل IPA
-
-راجع `docs/IPA-GUIDE.md` للفرق بين:
-
-- **Unsigned IPA**: يُبنى بدون شهادة توقيع؛ لا يثبَّت مباشرة، ويحتاج إعادة توقيع عبر ESign/Sideloadly بحسابك.
-- **Signed IPA**: موقّع بشهادة Apple صالحة + Provisioning Profile، ويعمل على الأجهزة المصرح بها.
-
-GitHub Actions:
-- `Build Expo iOS IPA` → ينتج `NEXUSAI-unsigned-ipa` artifact عند تغيير `mobile/` أو يدوياً.
-- `Build iOS App` → مسار SwiftUI الأصلي.
-- `Build Signed iOS App` → يدوي، يحتاج Secrets التوقيع.
-
-الملف الناتج لهذه النسخة:
-
-- `NEXUS-AI.ipa` — 5,086,426 بايت.
-- SHA-256: `764b08b606de63226cca4c4ff563e192af4d823f627a2150a1977c954da5be22`.
-- Bundle ID: `ai.nexus.app`، arm64، iOS 15.1+.
-- غير موقّع، جاهز لإعادة التوقيع عبر ESign — راجع `docs/ESIGN-INSTALL.md`.
-
----
-
-## 8. ما تبقى بصراحة
-
-- **التوقيع**: لا توجد شهادة Apple أو Provisioning Profile هنا، لذلك الملف غير موقّع ولم يُختبر تثبيته على جهاز.
-- **النشر على Railway**: لم يُنشر من مساحة العمل لعدم توفر `RAILWAY_TOKEN`. التطبيق لا يعرض ONLINE قبل إدخال رابط Backend صالح والتحقق منه.
-- **Gemini / Mistral**: لم يُنفّذ اختبار بمفتاح حقيقي هنا. الاختبارات الجاهزة تعمل تلقائياً عند توفير المفتاح.
-- **اختبار الصوت/الميكروفون** في نسخة SwiftUI يحتاج جهاز iPhone؛ الأذونات مضافة في `Info.plist` والكود جاهز.
-
-لا يُعتبر أي بند أعلاه مكتملاً لمجرد وجود الكود؛ الحالة المذكورة هي ما تم التحقق منه فعلياً.
+**لم تُختبر:** مكالمات Gemini/Mistral بمفتاح إنتاجي، النشر الفعلي على Railway، اتصال التطبيق بخادم منشور، بيانات OTC/Smarty الحقيقية، تثبيت IPA على جهاز.

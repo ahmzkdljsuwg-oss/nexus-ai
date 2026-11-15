@@ -1,98 +1,90 @@
 # NEXUS AI — تقرير الاختبار الفعلي
 
-**تاريخ التشغيل:** 2026-11-14
-**البيئة:** Linux (بيئة العمل)، Python 3.13 داخل `.venv`، SQLite مؤقت + PostgreSQL 18.7 محلي.
-**الأمر:**
+**تاريخ التشغيل:** 2026-11-09
+**البيئة:** Linux، Python 3.13 (مجلد افتراضي مشترك)، SQLite مؤقت للاختبار.
+**ملاحظة:** `backend-legacy/` هو Backend قديم غير مرتبط بالتطبيق، وتقريره محفوظ في `backend-legacy/TEST-REPORT-legacy.md`.
+
+---
+
+## 1. Backend
 
 ```bash
 cd backend
-.venv/bin/python -m pytest -q
+python -m pytest -q
 ```
 
 **النتيجة الفعلية:**
 
 ```
-.................s.........................                              [100%]
-42 passed, 1 skipped in 7.51s
+..................                                                       [100%]
+18 passed in 1.19s
 ```
 
-نفس المجموعة على PostgreSQL 18.7:
+| # | الاختبار | ما تم التحقق منه |
+|---|---|---|
+| 1 | `test_market_keys_and_durations` | مفاتيح الأسواق السبعة والمدد المدعومة |
+| 2 | `test_ai_json_parser_rejects_markdown_and_clamps` | رفض JSON غير صالح وتقييد القيم |
+| 3 | `test_compare_ai_without_models_keeps_engine` | غياب النماذج لا يوقف المحرك الفني |
+| 4 | `test_compare_ai_blocks_three_way_split` | منع الخلاصة عند تعارض النموذجين |
+| 5 | `test_analysis_persists_only_actionable_results` | لا يُحفظ إلا التحليل القابل للتنفيذ |
+| 6 | `test_health_and_markets_shapes` | شكل `/api/health` و`/api/markets` |
+| 7 | `test_market_snapshot_supports_detail_screen` | بيانات شاشة تفاصيل السوق |
+| 8 | `test_analyse_manual_contract` | عقد `/api/analyse` مع مدة يدوية |
+| 9 | `test_auto_duration_reports_reason` | «تحليل الوقت حسب الشمعة» يشرح سبب اختيار المدة |
+| 10 | `test_recommendations_and_history_match_mobile` | توافق التوصيات والسجل مع التطبيق |
+| 11 | `test_chat_reports_missing_key_without_inventing` | الدردشة بلا مفتاح ترجع خطأ صريحاً لا رداً مخترعاً |
+| 12 | `test_market_snapshot_switches_asset` | تبديل الأصل داخل السوق |
+| 13 | `test_pinned_asset_never_silently_switches` | عدم تبديل الأصل المثبت بصمت |
+| 14 | `test_no_trade_is_not_stored` | `NO TRADE` لا يُسجل كتوصية |
+| 15 | `test_paid_routes_are_rate_limited` | تقييد معدل الطلبات المكلفة |
+| 16 | `test_both_models_receive_identical_market_payload` | Gemini وMistral يستلمان نفس بيانات السوق |
+| 17 | `test_gemini_error_does_not_leak_key` | الخطأ لا يكشف المفتاح |
+| 18 | `test_chat_uses_separate_chat_prompt` | الدردشة منفصلة عن محرك التحليل |
+
+### ما لا تثبته هذه الاختبارات
+
+- لا تتصل بمصادر أسعار حقيقية؛ تستخدم مزودات اختبار حتمية.
+- لا تنفّذ مكالمات Gemini أو Mistral بمفاتيح إنتاجية.
+- لا تثبت أن OTC أو Smarty متاحان؛ غياب الجسر يعطي `DATA_UNAVAILABLE`.
+
+---
+
+## 2. Mobile
 
 ```bash
-NEXUS_TEST_DATABASE_URL='postgresql+asyncpg://nexus@127.0.0.1:55432/nexus_test' \
-  .venv/bin/python -m pytest -q
-# 42 passed, 1 skipped in 7.00s
+cd mobile
+npm test
 ```
 
-الاختبار المتخطى هو اتصال Gemini الحقيقي. يعمل تلقائياً بمجرد وجود `GEMINI_API_KEY`:
+**النتيجة الفعلية:** 3 اختبارات منطق ناجحة (تسميات الاتجاه والنتيجة بالعربية والإنجليزية، ومعالجة `UNVERIFIED`).
 
 ```bash
-GEMINI_API_KEY=... .venv/bin/python -m pytest tests/test_assistant.py -q
+npx expo export --platform ios
 ```
 
----
-
-## ما تم التحقق منه فعلياً
-
-| # | الاختبار | ماذا يثبت |
-|---|---|---|
-| 1 | `test_register_login_and_me` | إنشاء حساب، تسجيل دخول (ببريد مختلف الأحرف)، قراءة `/auth/me` |
-| 2 | `test_duplicate_registration_and_bad_password` | منع التكرار (409)، رفض كلمة مرور خاطئة (401) |
-| 3 | `test_protected_routes_require_a_valid_session` | رفض الطلبات بلا توكن أو بتوكن غير صالح |
-| 4 | `test_session_inventory_and_logout` | جلسة حالية، إلغاء الجلسة عند logout |
-| 5 | `test_settings_are_persisted` | حفظ اللغة والصوت في قاعدة البيانات |
-| 6 | `test_account_update_name_and_password` | تحديث الاسم وكلمة المرور، رفض القديمة وقبول الجديدة |
-| 7 | `test_projects_crud_and_user_isolation` | CRUD المشاريع + منع وصول مستخدم آخر (404) |
-| 8 | `test_files_create_read_update_rename_delete_and_traversal` | الملفات والمجلدات وإعادة التسمية والحذف ومنع `..` |
-| 9 | `test_files_are_isolated_between_users` | عزل ملفات المستخدمين |
-| 10 | `test_chats_store_messages_and_are_isolated` | تخزين الرسائل وعزلها |
-| 11 | `test_tools_and_security_surfaces_are_real` | قائمة الأدوات وحالة الأمان مبنية على بيانات حقيقية |
-| 12 | `test_assistant_requires_gemini_configuration` | بدون مفتاح: 503 `GEMINI_NOT_CONFIGURED` بدلاً من رد وهمي |
-| 13 | `test_assistant_saves_history_and_sends_context` | حفظ سجل المحادثة وإرسال سياق المشروع/الملف إلى Gemini |
-| 14 | `test_assistant_tool_creates_project_and_file` | تنفيذ أدوات Gemini لإنشاء مشروع وملف فعلياً |
-| 15 | `test_assistant_cannot_attach_another_users_project` | منع ربط مشروع مستخدم آخر |
-| 16 | `test_gemini_client_uses_header_key_and_surfaces_rate_limit` | المفتاح في هيدر، معالجة 429 |
-| 17 | `test_health_reports_database_and_gemini_state` | `/api/health` يعكس حالة القاعدة وGemini |
-| 18 | `test_health_over_real_http` | الخادم يعمل عبر TCP حقيقي ويقرأ PostgreSQL/SQLite |
-| 19 | `test_register_login_and_read_account_over_real_http` | تسجيل ودخول وقراءة الحساب عبر HTTP فعلي |
-| 20 | `test_protected_route_rejects_missing_token_over_real_http` | رفض الطلبات المحمية بلا توكن عبر HTTP |
-| 21 | `test_railway_uses_dockerfile_and_health_check` | إعداد Railway يبني Dockerfile ويفحص `/api/health` |
-| 22 | `test_dockerfile_runs_as_non_root_and_exposes_port` | الحاوية تعمل بمستخدم غير جذري وتفتح المنفذ |
-| 23 | `test_env_example_lists_required_runtime_variables_without_values` | المتغيرات المطلوبة موجودة بلا قيم أسرار |
+**النتيجة:** نجح، وأنتج حزمة Hermes iOS.
 
 ---
 
-## ما لم يُختبر في هذه البيئة (بصراحة)
+## 3. بناء IPA (GitHub Actions)
 
-| البند | السبب | كيف يُختبر |
-|---|---|---|
-| بناء مشروع Xcode | لا يوجد macOS/Xcode في بيئة Linux | ✅ نجح في GitHub Actions run `43600526631` |
-| محتوى IPA | تم تنزيله وفحصه محلياً | ✅ `Payload/NexusAI.app/{Info.plist,NexusAI}` موجودان |
-| تشغيل التطبيق على iPhone | لا جهاز/محاكي iOS هنا | جهاز حقيقي بعد التوقيع |
-| اتصال التطبيق بالخادم حياً | يحتاج Build + خادم منشور | افتح التطبيق واكتب عنوان الخادم |
-| Gemini حقيقي | لا يوجد `GEMINI_API_KEY` في بيئة العمل | يعمل الاختبار تلقائياً عند توفر المفتاح |
-| الميكروفون والتعرف على الكلام | يحتاج جهاز iOS وأذونات فعلية | جرّب زر الميكروفون وارفض/اقبل الإذن |
-| نشر Railway | يحتاج حساب Railway وصلاحيات | `docs/DEPLOYMENT.md` |
+- Workflow: `.github/workflows/expo-ios-build.yml`
+- Run: `43714673687` — **success**
+- Runner: `macos-15`
+- Artifact: `NEXUSAI-unsigned-ipa` — 5,086,426 بايت
+- SHA-256: `764b08b606de63226cca4c4ff563e192af4d823f627a2150a1977c954da5be22`
+- Bundle ID: `ai.nexus.app`
+- Binary: `NEXUSAI` — Mach-O 64-bit arm64، 6,389,352 بايت
+- `main.jsbundle` موجود — 2,650,717 بايت
+- لا `_CodeSignature` ولا `embedded.mobileprovision` → غير موقّع
+- فحص الأسرار داخل الحزمة: لا مفاتيح Google/Mistral/OpenAI ولا مفاتيح خاصة
 
 ---
 
-## ملاحظات جودة
+## 4. غير مختبر
 
-- الاختبارات تستخدم `MockTransport` لـ Gemini عند الحاجة، وتفصل بوضوح بين محاكاة الشبكة والاتصال الحقيقي (المتخطى).
-- لا توجد أسعار أو بيانات أعمال وهمية في أي مسار إنتاجي.
-- اختبارات الملفات تتحقق من منع Path Traversal.
-- اختبارات العزل تتحقق من 404 عند محاولة الوصول لبيانات مستخدم آخر.
-
-## 2026-11-15 — Expo iOS IPA build
-
-- Branch `lemon/expo-ios-ipa`, commit `bae005d`.
-- GitHub Actions `Build Expo iOS IPA`: **success** (run 43714673687, macOS 15).
-- `npm ci` success, mobile tests **3 passed**, `expo prebuild` success, CocoaPods success, Release archive success.
-- Artifact `NEXUSAI-unsigned-ipa`, 5,086,426 bytes.
-- SHA-256 `764b08b606de63226cca4c4ff563e192af4d823f627a2150a1977c954da5be22`.
-- Bundle ID `ai.nexus.app`, display name `NEXUS AI`, version 1.0.0 (1), minimum iOS 15.1.
-- Main binary `NEXUSAI`: Mach-O 64-bit arm64, 6,389,352 bytes (not a placeholder).
-- `main.jsbundle` present, 2,650,717 bytes.
-- No `_CodeSignature`, no `embedded.mobileprovision`: unsigned as expected.
-- No Google/Mistral/OpenAI key, Bearer token or private key found in the IPA.
-- Not tested: signing, ESign installation, device launch, live backend connection. See `docs/ESIGN-INSTALL.md`.
+- نشر Railway فعلي وPostgreSQL إنتاجي.
+- `/api/health` و`/api/markets` و`/api/analyse` و`/api/recommendations` و`/api/history` و`/api/chat` على خدمة منشورة.
+- اتصال تطبيق iPhone بخادم إنتاجي.
+- توقيع IPA وتثبيته عبر ESign على جهاز.
+- بيانات OTC/Smarty/Football/Luxury/AI/Cricket الحقيقية.
