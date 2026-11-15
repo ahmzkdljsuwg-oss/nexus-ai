@@ -74,4 +74,15 @@ Workflow: `.github/workflows/expo-ios-build.yml`
 
 الملف **unsigned**. هذا مقصود: ESign يعيد التوقيع بشهادة المستخدم. لا يُوصف الملف بأنه قابل للتثبيت مباشرة قبل توقيعه.
 
-لا توجد شهادة Apple أو Provisioning Profile في مساحة العمل. لتوقيع مباشر من GitHub Actions يلزم إضافة الأسرار الموضحة في `docs/SIGNING.md` وتشغيل `ios-signed.yml`. بديلاً عن ذلك، استخدم ESign على iPhone.
+لا توجد شهادة Apple أو Provisioning Profile في مساحة العمل. لتوقيع مباشر من GitHub Actions يلزم إضافة الأسرار الموضحة في `docs/SIGNING.md` وتشغيل `expo-ios-signed.yml`. بديلاً عن ذلك، استخدم ESign على iPhone.
+
+## 7. مراجعة ما قبل ESign
+
+- `LC_CODE_SIGNATURE` غير موجود، و`_CodeSignature` غير موجودة: الملف غير موقّع فعلاً.
+- `LC_ENCRYPTION_INFO_64` موجود مع `cryptid = 0`: لا يوجد تشفير App Store.
+- معمارية واحدة `arm64`، و`UIDeviceFamily = [1]`: iPhone فقط.
+- لا توجد App Extensions ولا إطارات تحتاج توقيعاً منفصلاً.
+- لا توجد مفاتيح أو شهادات أو Provisioning Profile داخل الحزمة.
+- `extra.apiBaseUrl` فارغ داخل `app.json`، لذلك رابط Railway يُدخل من Settings.
+
+التفاصيل الكاملة وخطوات التوقيع: `docs/IPA-FINAL-REVIEW.md` و`docs/SIGNING.md`.

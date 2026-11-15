@@ -1,7 +1,6 @@
 # NEXUS AI — تسليم نهائي صريح
 
 **التاريخ:** 2026-11-15  
-**الفرع:** `lemon/expo-ios-ipa`  
 **الفرع:** `lemon/expo-ios-ipa`
 
 ## ما تم تنفيذه فعلياً
@@ -17,8 +16,8 @@
 | توصيات UP/DOWN/NO TRADE | منفّذة | اختبارات العقد |
 | سجل وإحصائيات | منفّذ | `/api/history` |
 | تطبيق Expo/React Native | يعمل منطقياً، غير مشغّل على جهاز | `mobile/`, `npm test` 3/3 |
-| IPA غير موقّع | مبني ومفحوص | `NEXUS-AI.ipa` |
-| Workflow توقيع Expo | جاهز عند إضافة الأسرار | `.github/workflows/expo-ios-signed.yml` |
+| IPA غير موقّع | مبني ومفحوص وجاهز لإعادة توقيع ESign | `NEXUS-AI.ipa` |
+| Workflow توقيع Expo | مفحوص و`actionlint` نظيف، لم يُشغّل بعد | `.github/workflows/expo-ios-signed.yml` |
 | Railway/PostgreSQL | غير منشور | لا يوجد `RAILWAY_TOKEN` |
 
 ## ما لم يتم، ولا يُدّعى
@@ -32,9 +31,10 @@
 
 ## الملفات
 
-- المشروع الكامل: `NEXUS-AI-FINAL.zip`
+- المشروع الكامل: `NEXUS-AI-FINAL.zip` (checksum في الرد النهائي)
 - IPA غير موقّع: `NEXUS-AI.ipa`، SHA-256 `764b08b606de63226cca4c4ff563e192af4d823f627a2150a1977c954da5be22`
 - تقرير الاختبارات: `docs/TEST-REPORT.md`
+- مراجعة IPA والتوقيع: `docs/IPA-FINAL-REVIEW.md`
 - مصادر البيانات: `docs/DATA-SOURCES.md`
 - التوقيع: `docs/SIGNING.md`
 - ESign: `docs/ESIGN-INSTALL.md`

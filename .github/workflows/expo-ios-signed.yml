@@ -47,6 +47,19 @@ jobs:
           cache: npm
           cache-dependency-path: mobile/package-lock.json
 
+      - name: Verify app identity and read version
+        working-directory: mobile
+        run: |
+          set -euo pipefail
+          BUNDLE="$(node -p "require('./app.json').expo.ios.bundleIdentifier")"
+          VERSION="$(node -p "require('./app.json').expo.version")"
+          BUILD="$(node -p "require('./app.json').expo.ios.buildNumber || '1'")"
+          test "$BUNDLE" = "$BUNDLE_ID"
+          echo "BUNDLE_ID=$BUNDLE" >> "$GITHUB_ENV"
+          echo "APP_VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "APP_BUILD=$BUILD" >> "$GITHUB_ENV"
+          echo "App identity: $BUNDLE, version $VERSION ($BUILD)"
+
       - name: Install and test
         working-directory: mobile
         run: |
@@ -66,6 +79,7 @@ jobs:
           IOS_CERT_P12_BASE64: ${{ secrets.IOS_CERT_P12_BASE64 }}
           IOS_CERT_PASSWORD: ${{ secrets.IOS_CERT_PASSWORD }}
           IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          EXPORT_METHOD: ${{ inputs.export_method }}
         run: |
           set -euo pipefail
           KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
@@ -75,14 +89,35 @@ jobs:
           security set-keychain-settings -lut 21600 "$KEYCHAIN"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
 
-          printf '%s' "$IOS_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          printf '%s' "$IOS_CERT_P12_BASE64" | openssl base64 -d -A > "$RUNNER_TEMP/certificate.p12"
           security import "$RUNNER_TEMP/certificate.p12" -k "$KEYCHAIN" \
             -P "$IOS_CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+
+          for WWDR in AppleWWDRCAG4.cer AppleWWDRCAG3.cer; do
+            if curl -fsSL --retry 3 "https://www.apple.com/certificateauthority/$WWDR" -o "$RUNNER_TEMP/$WWDR"; then
+              security import "$RUNNER_TEMP/$WWDR" -k "$KEYCHAIN" -T /usr/bin/codesign || true
+            fi
+          done
+          if ! security find-certificate -c "Apple Worldwide Developer Relations Certification Authority" "$KEYCHAIN" >/dev/null 2>&1 \
+             && ! security find-certificate -c "Apple Worldwide Developer Relations Certification Authority" /Library/Keychains/System.keychain >/dev/null 2>&1; then
+            echo "::error::Apple WWDR intermediate certificate is missing; codesign cannot build a trusted chain."
+            exit 1
+          fi
+
           security list-keychain -d user -s "$KEYCHAIN" login.keychain-db
           security set-key-partition-list -S apple-tool:,apple:,codesign: \
             -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
 
-          printf '%s' "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/profile.mobileprovision"
+          NEED_IDENTITY="Apple Distribution"
+          if [ "$EXPORT_METHOD" = "development" ]; then NEED_IDENTITY="Apple Development"; fi
+          IDENTITIES="$(security find-identity -v -p codesigning "$KEYCHAIN")"
+          echo "$IDENTITIES"
+          if ! printf '%s\n' "$IDENTITIES" | grep -q "$NEED_IDENTITY"; then
+            echo "::error::$NEED_IDENTITY identity not found in the .p12 (export method: $EXPORT_METHOD)."
+            exit 1
+          fi
+
+          printf '%s' "$IOS_PROVISIONING_PROFILE_BASE64" | openssl base64 -d -A > "$RUNNER_TEMP/profile.mobileprovision"
           security cms -D -i "$RUNNER_TEMP/profile.mobileprovision" > "$RUNNER_TEMP/profile.plist"
 
           PROFILE_UUID="$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$RUNNER_TEMP/profile.plist")"
@@ -90,17 +125,31 @@ jobs:
           PROFILE_TEAM="$(/usr/libexec/PlistBuddy -c 'Print :TeamIdentifier:0' "$RUNNER_TEMP/profile.plist")"
           PROFILE_APP_ID="$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' "$RUNNER_TEMP/profile.plist")"
           PROFILE_APP_ID="${PROFILE_APP_ID#"$PROFILE_TEAM".}"
+          GET_TASK_ALLOW="$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:get-task-allow' "$RUNNER_TEMP/profile.plist" 2>/dev/null || echo false)"
 
-          echo "Profile: $PROFILE_NAME ($PROFILE_UUID), team $PROFILE_TEAM, app $PROFILE_APP_ID"
+          echo "Profile: $PROFILE_NAME ($PROFILE_UUID), team $PROFILE_TEAM, app $PROFILE_APP_ID, get-task-allow $GET_TASK_ALLOW"
           test "$PROFILE_APP_ID" = "$BUNDLE_ID"
           test "$PROFILE_TEAM" = "${{ secrets.IOS_TEAM_ID }}"
-          /usr/libexec/PlistBuddy -c 'Print :ProvisionedDevices' "$RUNNER_TEMP/profile.plist" >/dev/null
+
+          if ! /usr/libexec/PlistBuddy -c 'Print :ProvisionedDevices' "$RUNNER_TEMP/profile.plist" >/dev/null 2>&1; then
+            echo "::error::The provisioning profile has no registered devices. Use an Ad Hoc or Development profile."
+            exit 1
+          fi
+          if [ "$EXPORT_METHOD" = "ad-hoc" ] && [ "$GET_TASK_ALLOW" = "true" ]; then
+            echo "::error::Export method ad-hoc needs an Ad Hoc profile, but this profile is a Development profile."
+            exit 1
+          fi
+          if [ "$EXPORT_METHOD" = "development" ] && [ "$GET_TASK_ALLOW" != "true" ]; then
+            echo "::error::Export method development needs a Development profile."
+            exit 1
+          fi
 
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           cp "$RUNNER_TEMP/profile.mobileprovision" \
             "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
 
           echo "PROFILE_NAME=$PROFILE_NAME" >> "$GITHUB_ENV"
+          echo "PROFILE_UUID=$PROFILE_UUID" >> "$GITHUB_ENV"
 
       - name: Archive signed app
         working-directory: mobile/ios
@@ -116,6 +165,8 @@ jobs:
             -archivePath build/NexusAI.xcarchive \
             DEVELOPMENT_TEAM="$IOS_TEAM_ID" \
             PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
+            MARKETING_VERSION="$APP_VERSION" \
+            CURRENT_PROJECT_VERSION="$APP_BUILD" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="$SIGN_IDENTITY" \
             PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
@@ -129,13 +180,17 @@ jobs:
           EXPORT_METHOD: ${{ inputs.export_method }}
         run: |
           set -euo pipefail
+          SIGN_IDENTITY="Apple Distribution"
+          if [ "$EXPORT_METHOD" = "development" ]; then SIGN_IDENTITY="Apple Development"; fi
           cat > ExportOptions.plist <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0"><dict>
             <key>method</key><string>$EXPORT_METHOD</string>
             <key>signingStyle</key><string>manual</string>
+            <key>signingCertificate</key><string>$SIGN_IDENTITY</string>
             <key>teamID</key><string>$IOS_TEAM_ID</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
             <key>stripSwiftSymbols</key><true/>
             <key>compileBitcode</key><false/>
             <key>provisioningProfiles</key>
@@ -161,13 +216,37 @@ jobs:
           codesign --verify --deep --strict --verbose=2 "$APP"
           codesign -dv --verbose=4 "$APP" 2>&1 | tee "$RUNNER_TEMP/codesign.txt"
           BIN_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist")"
+          BIN_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Info.plist")"
+          BIN_BUILD="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP/Info.plist")"
           test "$BIN_ID" = "$BUNDLE_ID"
+          test "$BIN_VERSION" = "$APP_VERSION"
+          test "$BIN_BUILD" = "$APP_BUILD"
           if codesign -dv "$APP" 2>&1 | grep -q "Signature=adhoc"; then
             echo "::error::IPA is linker ad-hoc signed, not Apple signed"
             exit 1
           fi
+          if ! codesign -dv "$APP" 2>&1 | grep -q "Authority=Apple"; then
+            echo "::error::The IPA has no Apple signing authority"
+            exit 1
+          fi
           test -f "$APP/embedded.mobileprovision"
-          echo "signature: verified for $BIN_ID"
+          security cms -D -i "$APP/embedded.mobileprovision" > "$RUNNER_TEMP/signed-profile.plist"
+          EMBEDDED_UUID="$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$RUNNER_TEMP/signed-profile.plist")"
+          test "$EMBEDDED_UUID" = "$PROFILE_UUID"
+          echo "signature: verified for $BIN_ID $BIN_VERSION ($BIN_BUILD)"
+
+      - name: Write build summary
+        run: |
+          {
+            echo "### NEXUS AI signed IPA"
+            echo ""
+            echo "- Bundle ID: \`$BUNDLE_ID\`"
+            echo "- Version: \`$APP_VERSION ($APP_BUILD)\`"
+            echo "- Export method: \`${{ inputs.export_method }}\`"
+            echo "- Profile: \`$PROFILE_NAME\`"
+            echo "- Signature: Apple-issued (verified by codesign)"
+            echo "- Artifact: \`NEXUSAI-signed-ipa\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload signed IPA
         uses: actions/upload-artifact@v4

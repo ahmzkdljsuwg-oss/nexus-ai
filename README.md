@@ -209,13 +209,16 @@ xcodebuild -workspace NEXUSAI.xcworkspace -scheme NEXUSAI \
 
 ### التوقيع
 
-راجع `docs/ESIGN-INSTALL.md` و`docs/SIGNING.md`. تحتاج:
+- **ESign:** راجع `docs/ESIGN-INSTALL.md` و`docs/SIGNING.md`.
+- **بناء موقّع من GitHub:** شغّل workflow **Build Signed Expo iOS App** بعد إضافة:
+  - `IOS_CERT_P12_BASE64`
+  - `IOS_CERT_PASSWORD`
+  - `IOS_PROVISIONING_PROFILE_BASE64`
+  - `IOS_TEAM_ID`
 
-- شهادة Apple صالحة (`.p12` + كلمة المرور)
-- Provisioning Profile يطابق `ai.nexus.app`
-- UDID الجهاز إن كان Ad Hoc
+يحتاج البناء شهادة Apple صالحة، وProvisioning Profile من نوع Ad Hoc أو Development يطابق `ai.nexus.app`، وUDID الجهاز. الـ workflow يتحقق من ذلك قبل البناء ومن التوقيع بعده. دون هذه الأسرار يبقى الملف غير موقّع، ولا يصح وصفه بأنه جاهز للتثبيت.
 
-بدونها يبقى الملف غير موقّع، ولا يصح وصفه بأنه جاهز للتثبيت.
+مراجعة الحزمة والـ workflow: `docs/IPA-FINAL-REVIEW.md`.
 
 ---
 
