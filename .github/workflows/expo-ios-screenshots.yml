@@ -75,3 +75,5 @@ jobs:
           name: NexusAI-expo-screenshots
           path: shots
           if-no-files-found: warn
+
+# capture last launch

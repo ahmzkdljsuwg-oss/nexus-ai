@@ -57,7 +57,7 @@ export default function SplashScreen({ onFinish }) {
 
   return (
     <Animated.View style={[styles.root, { opacity }]} pointerEvents="auto">
-      <View style={[styles.glowTop, { opacity: glow }]} />
+      <Animated.View style={[styles.glowTop, { opacity: glow }]} />
       <View style={styles.glowBottom} />
       <View style={styles.grid} />
       <View style={[styles.center, { paddingTop: insets.top }]}>
