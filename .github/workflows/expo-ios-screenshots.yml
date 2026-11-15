@@ -1,6 +1,9 @@
 name: Expo iOS Screenshots
 
 on:
+  push:
+    paths:
+      - ".github/workflows/expo-ios-screenshots.yml"
   workflow_dispatch:
 
 permissions:
