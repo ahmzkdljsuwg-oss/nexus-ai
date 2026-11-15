@@ -12,12 +12,12 @@
 
 | العنصر | الحالة | الدليل |
 |---|---|---|
-| Backend FastAPI | ✅ يعمل | 18 اختباراً ناجحاً |
+| Backend FastAPI | ✅ يعمل | 25 اختباراً ناجحاً و2 متجاوزان |
 | اختبارات HTTP للعقود | ✅ تعمل | `backend/tests/test_http_contract.py` |
 | تحليل الشموع والمؤشرات وSMC | ✅ يعمل | `backend/engines/` |
 | Gemini + Mistral ومقارنة النتائج | ⚠️ الكود جاهز | يحتاج `GEMINI_API_KEY` و`MISTRAL_API_KEY` حقيقيين |
 | الأسواق السبعة منفصلة | ✅ في التطبيق والـAPI | `/api/markets` |
-| بيانات FOREX / GOLD | ⚠️ تعتمد على المفتاح | Twelve Data أو Yahoo fallback |
+| بيانات FOREX / GOLD | ⚠️ تحتاج مفتاحاً حقيقياً | Twelve Data؛ بدون مفتاح = `DATA UNAVAILABLE` |
 | بيانات OTC / SMARTY / FOOTBALL / LUXURY / AI / CRICKET | ⚠️ تحتاج جسراً حقيقياً | `EO_BRIDGE_URL` و`EO_BRIDGE_KEY` أو `MT5_BRIDGE_URL` |
 | بناء IPA | ✅ تم بناؤه والتحقق منه | `NEXUS-AI.ipa` + `docs/IPA-BUILD-REPORT.md` |
 | توقيع IPA | ❌ لم يتم | يحتاج شهادة Apple وProvisioning Profile |
@@ -40,7 +40,7 @@ NEXUS-AI/
 │   │   └── schemas.py
 │   ├── engines/                 # التحليل الفني وهيكل السوق
 │   ├── providers/               # twelve data, yahoo, eobridge, mt5, swissquote
-│   ├── tests/                   # 18 اختباراً
+│   ├── tests/                   # 25 اختباراً ناجحاً + 2 متجاوزان
 │   └── Dockerfile / railway.json / requirements.txt / .env.example
 ├── mobile/                      # تطبيق iPhone (Expo / React Native)
 │   ├── App.js
@@ -122,11 +122,11 @@ npx expo start
 
 | السوق | المصدر | الحالة |
 |---|---|---|
-| FOREX | Twelve Data، ثم Yahoo fallback | يحتاج `TWELVE_DATA_API_KEY` |
+| FOREX | Twelve Data + Swissquote quotes | يحتاج `TWELVE_DATA_API_KEY` للشموع |
 | OTC | جسر ExpertOption | يحتاج `EO_BRIDGE_URL` + `EO_BRIDGE_KEY` |
 | SMARTY | جسر ExpertOption / MT5 | يحتاج جسراً يثبت دعم Smarty |
 | FOOTBALL / LUXURY / AI INDEX / CRICKET | جسر ExpertOption / MT5 | لا تُستخدم أسعار بديلة |
-| GOLD | Twelve Data / Yahoo | يعتمد على تغطية الخطة |
+| GOLD | Twelve Data | يحتاج مفتاحاً وخطة تغطي XAU/USD |
 
 التفاصيل والقيود في `docs/DATA-SOURCES.md`. لا يُعتبر أي سوق مدعوماً لمجرد وجود اسمه في القائمة.
 
