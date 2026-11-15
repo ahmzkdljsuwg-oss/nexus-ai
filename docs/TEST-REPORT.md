@@ -1,7 +1,7 @@
 # NEXUS AI — تقرير الاختبار الفعلي
 
 **تاريخ التشغيل:** 2026-11-15
-**البيئة:** Linux، Python 3.13 (مجلد افتراضي مشترك)، SQLite مؤقت للاختبار.
+**البيئة:** Linux، Python 3.13 داخل بيئة نظيفة `/tmp/nexusvenv`، SQLite مؤقت للاختبار.
 **ملاحظة:** `backend-legacy/` هو Backend قديم غير مرتبط بالتطبيق، وتقريره محفوظ في `backend-legacy/TEST-REPORT-legacy.md`.
 
 ---
@@ -17,7 +17,7 @@ python -m pytest -q
 
 ```
 ..................                                                       [100%]
-18 passed in 1.19s
+18 passed in 1.18s
 ```
 
 | # | الاختبار | ما تم التحقق منه |
