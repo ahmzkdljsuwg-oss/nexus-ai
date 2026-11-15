@@ -7,6 +7,7 @@ import { AppProvider } from './src/state/AppContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { Colors } from './src/theme/colors';
 import SplashScreen from './src/screens/SplashScreen';
+import ErrorBoundary from './src/components/ErrorBoundary';
 
 const theme = {
   ...DarkTheme,
@@ -26,6 +27,7 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: Colors.background }}>
+      <ErrorBoundary>
       <SafeAreaProvider>
         <AppProvider>
           <NavigationContainer theme={theme}>
@@ -35,6 +37,7 @@ export default function App() {
           </NavigationContainer>
         </AppProvider>
       </SafeAreaProvider>
+      </ErrorBoundary>
     </GestureHandlerRootView>
   );
 }

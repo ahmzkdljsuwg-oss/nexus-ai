@@ -46,9 +46,9 @@ export default function SplashScreen({ onFinish }) {
   useEffect(() => {
     if (!splashCanFinish({ elapsed, ready, booting, forced }) || leaving) return;
     setLeaving(true);
-    Animated.timing(opacity, { toValue: 0, duration: 420, easing: Easing.out(Easing.quad), useNativeDriver: true }).start(({ finished }) => {
-      if (finished && onFinish) onFinish();
-    });
+    Animated.timing(opacity, { toValue: 0, duration: 420, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+    const handoff = setTimeout(() => { if (onFinish) onFinish(); }, 520);
+    return () => clearTimeout(handoff);
   }, [booting, elapsed, forced, leaving, onFinish, opacity, ready]);
 
   const status = splashStatus({ baseUrl, connection, booting, language });
