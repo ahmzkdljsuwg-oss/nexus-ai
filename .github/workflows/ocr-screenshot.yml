@@ -1,0 +1,17 @@
+name: OCR Screenshot Check
+
+on:
+  push:
+    paths:
+      - "docs/screenshots/**"
+      - "scripts/ocr.swift"
+      - ".github/workflows/ocr-screenshot.yml"
+
+jobs:
+  ocr:
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read text from fixed app screenshot
+        run: swift scripts/ocr.swift docs/screenshots/expo-app-launch.png
