@@ -11,8 +11,7 @@ import { useApp } from '../state/AppContext';
 import { MarketCard } from '../components/MarketCard';
 import { ConnectionBadge } from '../components/ui';
 import { t } from '../i18n';
-
-const MARKET_ORDER = ['OTC', 'SMARTY', 'FOOTBALL', 'LUXURY', 'AI', 'CRICKET', 'FOREX'];
+import { MARKET_ORDER, fallbackMarkets } from '../marketCatalog';
 
 export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -23,8 +22,8 @@ export default function HomeScreen({ navigation }) {
     Animated.spring(header, { toValue: 0, tension: 55, friction: 9, useNativeDriver: true }).start();
   }, [header]);
 
-  const rows = MARKET_ORDER.map((key) => overview?.markets?.find((item) => item.key === key))
-    .filter(Boolean);
+  const serverMarkets = overview?.markets?.length ? overview.markets : fallbackMarkets();
+  const rows = MARKET_ORDER.map((key) => serverMarkets.find((item) => item.key === key)).filter(Boolean);
   const available = rows.filter((item) => item.status === 'LIVE').length;
   const ai = overview?.ai || {};
   const gemini = ai.gemini;

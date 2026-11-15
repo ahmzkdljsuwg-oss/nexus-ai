@@ -17,7 +17,8 @@ appId: ai.nexus.app
 - assertVisible: "GEMINI CHAT"
 - tapOn: "Home"
 - assertVisible: "MARKETS"
-- tapOn: "Smarty Market"
+- tapOn:
+    id: "market-card-SMARTY"
 - assertVisible: "ANALYSIS MODE"
 - tapOn: "Strong analysis"
 - assertVisible: "TRADE DURATION"

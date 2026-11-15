@@ -13,7 +13,7 @@ export function MarketCard({ market, language, onPress, index = 0 }) {
   const description = language === 'ar' ? copy.descAr : copy.descEn;
   return (
     <FadeIn delay={index * 55} style={styles.wrapper}>
-      <Pressable onPress={onPress} style={({ pressed }) => [styles.press, pressed && { opacity: 0.88 }]}>
+      <Pressable testID={`market-card-${market.key}`} onPress={onPress} style={({ pressed }) => [styles.press, pressed && { opacity: 0.88 }]}>
         <LinearGradient
           colors={live ? [market.accent + '22', Colors.cardBg, '#0B0B15'] : ['#171726', '#0D0D18']}
           start={{ x: 0, y: 0 }}
