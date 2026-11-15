@@ -5,6 +5,7 @@ Bundle Identifier ثابت: `ai.nexus.app`. لا يُطلب تغييره ولا 
 - الـ IPA في التسليم **غير موقّع** ومعدّ لإعادة التوقيع عبر ESign.
 - بناء IPA موقّع من GitHub Actions يحتاج شهادة Apple وProvisioning Profile حقيقيين.
 - لا ترسل الشهادة أو كلمة مرورها أو الملف التعريفي في المحادثة. ضعها في GitHub Secrets فقط.
+- الدليل التفصيلي لإنشاء شهادة Ad Hoc وProvisioning Profile: `docs/ADHOC-SIGNING-GUIDE.md`.
 
 ## 1. ما يحتاجه GitHub Actions
 
