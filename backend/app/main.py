@@ -15,9 +15,11 @@ from sqlalchemy import text
 
 from app.ai_clients import AIUnavailable, GeminiClient, MistralClient
 from app.db import AnalysisRecord, HistoryStore
-from app.market_service import MARKET_BY_KEY, TradingService, market_key
+from app.market_service import MARKET_BY_KEY, TradingService, chart_frame, market_key
 from app.schemas import AnalyseRequest, ChatRequest
 from config import Settings, settings as default_settings
+from providers.base import utc_now
+from providers.catalog import timeframe
 
 LOG = logging.getLogger("nexus")
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper(), format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -66,22 +68,31 @@ def create_app(settings: Settings = default_settings) -> FastAPI:
     stop = asyncio.Event()
 
     async def scanner_loop() -> None:
-        await asyncio.sleep(15)
+        """Analyse each market once per new closed candle, never on every timer tick."""
+        last_bucket: dict[str, int] = {}
+        await asyncio.sleep(8)
         while not stop.is_set():
             for item in MARKET_BY_KEY.values():
                 if stop.is_set():
                     return
+                key = item["key"]
                 try:
-                    assets = await service.assets(item["key"])
+                    assets = await service.assets(key)
                     if not assets:
                         continue
-                    await service.analyse(item["key"], None, "auto", None)
-                    LOG.info("scan completed for %s", item["key"])
-                except Exception as exc:  # noqa: BLE001
-                    LOG.info("scan skipped for %s: %s", item["key"], exc)
-                await asyncio.sleep(5)
+                    bar_seconds = timeframe(chart_frame(assets[0])).seconds
+                    bucket = int(utc_now().timestamp() // bar_seconds)
+                    if last_bucket.get(key) == bucket:
+                        continue
+                    mode = "strong" if item["market"].is_expertoption else "normal"
+                    await service.analyse(key, None, "auto", None, analysis_mode=mode)
+                    last_bucket[key] = bucket
+                    LOG.info("candle-close scan completed for %s in %s mode", key, mode)
+                except Exception as exc:  # noqa: BLE001 - one market must not stop the scan
+                    LOG.info("scan skipped for %s: %s", key, exc)
+                await asyncio.sleep(1)
             try:
-                await asyncio.wait_for(stop.wait(), timeout=180)
+                await asyncio.wait_for(stop.wait(), timeout=5)
             except asyncio.TimeoutError:
                 pass
 
@@ -209,7 +220,12 @@ def create_app(settings: Settings = default_settings) -> FastAPI:
             raise HTTPException(status_code=404, detail={"code": "MARKET_UNKNOWN", "message": "Unknown market"})
         try:
             result = await service.analyse(
-                normalised, body.asset, body.duration_mode, body.duration, body.language
+                normalised,
+                body.asset,
+                body.duration_mode,
+                body.duration,
+                body.language,
+                body.analysis_mode,
             )
         except Exception as exc:  # noqa: BLE001
             from providers.base import DataUnavailable

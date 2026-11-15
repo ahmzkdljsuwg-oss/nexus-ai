@@ -65,6 +65,23 @@ class HistoryStore:
         async with self.session_factory() as session:
             return await session.get(AnalysisRecord, record_id)
 
+    async def active_signal(self, asset_key: str, direction: str, now: datetime) -> AnalysisRecord | None:
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(AnalysisRecord)
+                .where(
+                    AnalysisRecord.asset_key == asset_key,
+                    AnalysisRecord.direction == direction,
+                    AnalysisRecord.status == "READY",
+                    AnalysisRecord.result == "OPEN",
+                    AnalysisRecord.expires_at.is_not(None),
+                    AnalysisRecord.expires_at > now,
+                )
+                .order_by(AnalysisRecord.created_at.desc())
+                .limit(1)
+            )
+            return result.scalars().first()
+
     async def open_expired(self, now: datetime) -> list[AnalysisRecord]:
         async with self.session_factory() as session:
             result = await session.execute(

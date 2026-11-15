@@ -30,6 +30,7 @@ export default function MarketDetailScreen({ route, navigation }) {
   const [error, setError] = useState('');
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [mode, setMode] = useState('auto');
+  const [analysisMode, setAnalysisMode] = useState('normal');
   const [duration, setDuration] = useState(300);
   const [result, setResult] = useState(null);
 
@@ -63,6 +64,7 @@ export default function MarketDetailScreen({ route, navigation }) {
         duration_mode: auto ? 'auto' : mode,
         duration: auto || mode === 'auto' ? null : duration,
         language,
+        analysis_mode: analysisMode,
       });
       setResult(response.data);
     } catch (err) {
@@ -158,6 +160,30 @@ export default function MarketDetailScreen({ route, navigation }) {
 
         {live ? (
           <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t(language, 'ANALYSIS MODE', 'نمط التحليل')}</Text>
+            <View style={styles.modeRow}>
+              <Pressable onPress={() => setAnalysisMode('normal')} style={[styles.mode, analysisMode === 'normal' && styles.modeActive]}>
+                <Text style={[styles.modeTitle, analysisMode === 'normal' && styles.modeTitleActive]}>
+                  {t(language, 'Normal analysis', 'تحليل عادي')}
+                </Text>
+                <Text style={styles.modeSub}>
+                  {t(language, 'One suitable frame, faster read', 'إطار مناسب واحد وقراءة أسرع')}
+                </Text>
+              </Pressable>
+              <Pressable onPress={() => setAnalysisMode('strong')} style={[styles.mode, analysisMode === 'strong' && styles.modeActive]}>
+                <Text style={[styles.modeTitle, analysisMode === 'strong' && styles.modeTitleActive]}>
+                  {t(language, 'Strong analysis', 'تحليل قوي')}
+                </Text>
+                <Text style={styles.modeSub}>
+                  {t(language, 'Candle-by-candle, strict confirmations', 'شمعة بشمعة مع تأكيدات صارمة')}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
+
+        {live ? (
+          <View style={styles.section}>
             <Text style={styles.sectionTitle}>{t(language, 'TRADE DURATION', 'مدة الصفقة')}</Text>
             <View style={styles.modeRow}>
               <Pressable onPress={() => setMode('auto')} style={[styles.mode, mode === 'auto' && styles.modeActive]}>
@@ -206,7 +232,9 @@ export default function MarketDetailScreen({ route, navigation }) {
             }]}>
               <View style={styles.resultTop}>
                 <View>
-                  <Text style={styles.smallLabel}>{t(language, 'FINAL RECOMMENDATION', 'التوصية النهائية')}</Text>
+                  <Text style={styles.smallLabel}>
+                    {result.mode_label || t(language, 'FINAL RECOMMENDATION', 'التوصية النهائية')}
+                  </Text>
                   <Text style={styles.resultAsset}>{result.asset}</Text>
                 </View>
                 <DirectionBadge direction={result.direction} language={language} />
@@ -233,6 +261,9 @@ export default function MarketDetailScreen({ route, navigation }) {
                 <>
                   <Text style={styles.noTrade}>{t(language, 'NO ACTIONABLE RECOMMENDATION', 'لا توجد توصية قابلة للتنفيذ')}</Text>
                   <Text style={styles.muted}>{result.no_trade_reason || result.duration_reason}</Text>
+                  {(result.strong_gate || []).map((item, index) => (
+                    <Text key={index} style={styles.diff}>△ {item}</Text>
+                  ))}
                 </>
               )}
               <Text style={styles.durationReason}>{result.duration_reason}</Text>

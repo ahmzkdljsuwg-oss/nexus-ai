@@ -11,6 +11,7 @@ class AnalyseRequest(BaseModel):
     duration_mode: Literal["manual", "auto"] = "auto"
     duration: int | None = Field(default=None, ge=5, le=3600)
     language: Literal["en", "ar"] = "en"
+    analysis_mode: Literal["normal", "strong"] = "normal"
 
 
 class ChatMessage(BaseModel):

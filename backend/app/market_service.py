@@ -94,9 +94,34 @@ def candle_view(candles, limit: int = 14) -> list[dict[str, Any]]:
     return rows
 
 
+def _candle_state(data: MarketData, result: AnalysisResult) -> dict[str, Any]:
+    """The engine scores closed candles only; the live bar is reported separately."""
+    if not data.candles:
+        return {"state": "UNKNOWN", "forming_candle": None, "closes_at": None}
+    last = data.candles[-1]
+    closes_at = last.time + timedelta(seconds=data.timeframe.seconds)
+    forming = closes_at > result.generated_at
+    return {
+        "state": "FORMING" if forming else "CLOSED",
+        "forming_candle": {
+            "time": last.time.isoformat(),
+            "open": last.open,
+            "high": last.high,
+            "low": last.low,
+            "close": last.close,
+            "closes_at": closes_at.isoformat(),
+            "bullish": last.close > last.open,
+        }
+        if forming
+        else None,
+        "closes_at": closes_at.isoformat(),
+    }
+
+
 def _technical_payload(data: MarketData, result: AnalysisResult) -> dict[str, Any]:
     indicators = result.indicators or {}
     smc = result.smc or {}
+    candle_state = _candle_state(data, result)
     return {
         "market": result.market.upper(),
         "asset": result.asset_display,
@@ -132,6 +157,9 @@ def _technical_payload(data: MarketData, result: AnalysisResult) -> dict[str, An
                 f"volatility {str(indicators.get('volatility') or 'UNKNOWN')}"
             ),
             "candles": candle_view(data.candles),
+            "candle_state": candle_state["state"],
+            "forming_candle": candle_state["forming_candle"],
+            "current_candle_closes_at": candle_state["closes_at"],
         },
         "data_status": "LIVE",
     }
@@ -153,6 +181,32 @@ def _ai_prompt_payload(technical: dict[str, Any]) -> dict[str, Any]:
         "reasons": technical["reasons"],
         "recent_candles": technical["candle_analysis"]["candles"][-8:],
     }
+
+
+STRONG_MIN_CONFIDENCE = 70.0
+STRONG_MIN_DATA_QUALITY = 65.0
+STRONG_MIN_CONFIRMATIONS = 3
+
+
+def strong_gate(result: AnalysisResult) -> list[str]:
+    """Strong analysis requires several independent confirmations, not one indicator."""
+    if result.direction not in {"UP", "DOWN"}:
+        return list(result.blockers or [result.cancellation_reason or "No confirmed directional setup"])
+    missing: list[str] = []
+    if result.confidence < STRONG_MIN_CONFIDENCE:
+        missing.append(
+            f"STRONG ANALYSIS: confidence {result.confidence:.0f}% is below the {STRONG_MIN_CONFIDENCE:.0f}% floor"
+        )
+    if float(result.data_quality_score or 0) < STRONG_MIN_DATA_QUALITY:
+        missing.append(
+            f"STRONG ANALYSIS: data quality {result.data_quality_score:.0f} is below {STRONG_MIN_DATA_QUALITY:.0f}"
+        )
+    if len(result.confirmed_strategies) < STRONG_MIN_CONFIRMATIONS:
+        missing.append(
+            f"STRONG ANALYSIS: only {len(result.confirmed_strategies)} independent confirmations; "
+            f"{STRONG_MIN_CONFIRMATIONS} are required"
+        )
+    return missing
 
 
 def compare_ai(technical: dict[str, Any], gemini: dict, mistral: dict) -> dict[str, Any]:
@@ -328,6 +382,7 @@ class TradingService:
                 "gemini": {"configured": self.gemini.configured, "model": self.gemini.model},
                 "mistral": {"configured": self.mistral.configured, "model": self.mistral.model},
             },
+            "data_sources": self.registry.statuses(),
             "generated_at": utc_now().isoformat(),
         }
         self._overview_cache = (now + 25.0, payload)
@@ -357,9 +412,12 @@ class TradingService:
         duration_mode: str,
         duration: int | None,
         language: str = "en",
+        analysis_mode: str = "normal",
     ) -> dict[str, Any]:
         if duration_mode not in {"manual", "auto"}:
             raise DataUnavailable("DURATION_MODE", "duration_mode must be manual or auto")
+        if analysis_mode not in {"normal", "strong"}:
+            raise DataUnavailable("ANALYSIS_MODE", "analysis_mode must be normal or strong")
         assets = await self.assets(key)
         asset = get_asset(asset_key) if asset_key else (assets[0] if assets else None)
         if asset is None and asset_key and self.inventory is not None:
@@ -378,9 +436,24 @@ class TradingService:
             try:
                 data, result = await self._analyse_once(asset, int(duration))
             except DataUnavailable as exc:
-                return await self._unavailable(asset, key, exc, allowed, duration_mode, duration)
+                return await self._unavailable(asset, key, exc, allowed, duration_mode, duration, analysis_mode)
+        elif analysis_mode == "normal":
+            candidate = 60 if asset.market.is_expertoption else 300
+            if candidate not in allowed:
+                candidate = allowed[0]
+            try:
+                data, result = await self._analyse_once(asset, candidate)
+            except DataUnavailable as exc:
+                return await self._unavailable(asset, key, exc, allowed, duration_mode, candidate, analysis_mode)
+            chosen = candidate
+            reason = (
+                "Normal analysis uses one appropriate frame for this market. "
+                f"Trend {result.trend_summary}, momentum {result.momentum_strength}. "
+                "This is a faster read, not a guaranteed outcome."
+            )
         else:
             best: tuple[tuple[float, float, float], int, AnalysisResult, MarketData] | None = None
+            fallback: tuple[tuple[float, float, float], int, AnalysisResult, MarketData] | None = None
             failures: list[str] = []
             cache: dict[str, MarketData] = {}
             for candidate in allowed:
@@ -394,23 +467,25 @@ class TradingService:
                 except DataUnavailable as exc:
                     failures.append(exc.message)
                     continue
-                if frame_result.direction not in {"UP", "DOWN"}:
-                    continue
                 rank = (
                     float(frame_result.evidence_score or 0),
                     float(frame_result.data_quality_score or 0),
                     frame_result.confidence,
                 )
+                if frame_result.direction not in {"UP", "DOWN"}:
+                    if fallback is None or rank > fallback[0]:
+                        fallback = (rank, candidate, frame_result, frame_data)
+                    continue
                 if best is None or rank > best[0]:
                     best = (rank, candidate, frame_result, frame_data)
-            if best is None:
+            if best is None and fallback is None:
                 exc = DataUnavailable(
                     "NO_ACTIONABLE_SETUP",
-                    "DATA UNAVAILABLE — no actionable setup across supported durations",
+                    "DATA UNAVAILABLE — no verified candles across supported durations",
                     "; ".join(failures[:3]) or "The evidence did not pass the confirmation rules",
                 )
-                return await self._unavailable(asset, key, exc, allowed, duration_mode, None)
-            _, chosen, result, data = best
+                return await self._unavailable(asset, key, exc, allowed, duration_mode, None, analysis_mode)
+            _, chosen, result, data = best or fallback
             reason = (
                 f"Suggestion only: {DURATION_LABELS[chosen].split(' / ')[0]} is the nearest verified expiry "
                 f"to the {result.timeframe} structure. Trend {result.trend_summary}, "
@@ -419,12 +494,32 @@ class TradingService:
             )
 
         assert data is not None and result is not None
+        gate_reasons: list[str] = []
+        if analysis_mode == "strong":
+            gate_reasons = strong_gate(result)
+            if gate_reasons:
+                result.direction = "NO TRADE"
+                result.blockers = gate_reasons
+                result.cancellation_reason = gate_reasons[0]
+                result.reasons = []
         technical = _technical_payload(data, result)
         prompt_data = _ai_prompt_payload(technical)
-        gemini_result, mistral_result = await asyncio.gather(
-            self.gemini.analyse(prompt_data),
-            self.mistral.analyse(prompt_data),
-        )
+        if analysis_mode == "strong" and gate_reasons:
+            gemini_result = {
+                "provider": "Gemini",
+                "online": False,
+                "error": "Not called: strong analysis confirmations were insufficient",
+            }
+            mistral_result = {
+                "provider": "Mistral",
+                "online": False,
+                "error": "Not called: strong analysis confirmations were insufficient",
+            }
+        else:
+            gemini_result, mistral_result = await asyncio.gather(
+                self.gemini.analyse(prompt_data),
+                self.mistral.analyse(prompt_data),
+            )
         comparison = compare_ai(technical, gemini_result, mistral_result)
         final_direction = comparison["final_direction"]
         actionable = final_direction in {"UP", "DOWN"}
@@ -450,6 +545,9 @@ class TradingService:
             "duration": chosen,
             "duration_label": DURATION_LABELS.get(chosen or 0, "—"),
             "duration_mode": duration_mode,
+            "analysis_mode": analysis_mode,
+            "mode_label": "STRONG ANALYSIS" if analysis_mode == "strong" else "NORMAL ANALYSIS",
+            "strong_gate": gate_reasons,
             "duration_reason": reason,
             "available_durations": allowed,
             "duration_labels": {str(value): DURATION_LABELS[value] for value in allowed},
@@ -488,27 +586,39 @@ class TradingService:
             ),
         }
         if actionable:
-            record = AnalysisRecord(
-                market=key,
-                asset_key=asset.key,
-                asset=asset.display,
-                direction=final_direction,
-                confidence=float(result.confidence),
-                duration_seconds=int(chosen or 0),
-                entry_price=result.price,
-                source=result.source,
-                status=status,
-                result="OPEN",
-                created_at=generated,
-                expires_at=expires,
-                payload=payload,
-                summary=str(result.reasons[0]) if result.reasons else comparison["summary"],
-            )
-            record = await self.store.save(record)
-            payload["record_id"] = record.id
-            payload["entry"]["record_id"] = record.id
+            existing = await self.store.active_signal(asset.key, final_direction, generated)
+            if existing is not None:
+                payload["record_id"] = existing.id
+                payload["entry"]["record_id"] = existing.id
+                payload["duplicate"] = True
+                payload["scan_note"] = (
+                    "This direction is already active for this asset; the live analysis was refreshed "
+                    "but no duplicate recommendation was stored."
+                )
+            else:
+                record = AnalysisRecord(
+                    market=key,
+                    asset_key=asset.key,
+                    asset=asset.display,
+                    direction=final_direction,
+                    confidence=float(result.confidence),
+                    duration_seconds=int(chosen or 0),
+                    entry_price=result.price,
+                    source=result.source,
+                    status=status,
+                    result="OPEN",
+                    created_at=generated,
+                    expires_at=expires,
+                    payload=payload,
+                    summary=str(result.reasons[0]) if result.reasons else comparison["summary"],
+                )
+                record = await self.store.save(record)
+                payload["record_id"] = record.id
+                payload["entry"]["record_id"] = record.id
+                payload["duplicate"] = False
         else:
             payload["record_id"] = None
+            payload["duplicate"] = False
         return payload
 
     async def _unavailable(
@@ -519,6 +629,7 @@ class TradingService:
         allowed: list[int],
         mode: str,
         duration: int | None,
+        analysis_mode: str = "normal",
     ) -> dict[str, Any]:
         payload = {
             "market": key,
@@ -534,6 +645,9 @@ class TradingService:
             "duration": duration,
             "duration_label": DURATION_LABELS.get(duration or 0, "—"),
             "duration_mode": mode,
+            "analysis_mode": analysis_mode,
+            "mode_label": "STRONG ANALYSIS" if analysis_mode == "strong" else "NORMAL ANALYSIS",
+            "strong_gate": [],
             "duration_reason": exc.message,
             "available_durations": allowed,
             "duration_labels": {str(value): DURATION_LABELS[value] for value in allowed},
