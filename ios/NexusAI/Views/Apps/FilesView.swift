@@ -203,9 +203,6 @@ struct FilesView: View {
             files = try await filesTask
             projects = try await projectsTask
             errorMessage = nil
-        } catch let error as APIError {
-            if error.isUnauthorized { app.handleUnauthorized() }
-            else { errorMessage = app.friendly(error) }
         } catch {
             errorMessage = app.friendly(error)
         }

@@ -2,12 +2,9 @@ import SwiftUI
 
 struct SecurityView: View {
     @EnvironmentObject private var app: AppState
-    @Environment(\.dismiss) private var dismiss
     @State private var status: SecurityStatus?
-    @State private var sessions: [NexusSession] = []
     @State private var loading = true
     @State private var errorMessage: String?
-    @State private var confirmLogout = false
 
     var body: some View {
         ScrollView {
@@ -26,48 +23,27 @@ struct SecurityView: View {
                         }
                     }
 
+                    let health = app.health
+                    let online = health?.status == "ok"
                     HStack(spacing: 9) {
-                        metric("\(status.projects)", app.text("projects"))
-                        metric("\(status.files)", app.text("files"))
-                        metric("\(status.chats)", app.text("chats"))
-                    }
-                }
-
-                HStack {
-                    SectionTitle(text: app.text("security.sessions"))
-                    Spacer()
-                    Button {
-                        Task { await load() }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(NexusTheme.emerald)
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                if sessions.isEmpty {
-                    Text(app.text("security.noSessions"))
-                        .font(.system(.caption, design: .rounded))
-                        .foregroundStyle(NexusTheme.muted)
-                } else {
-                    ForEach(sessions) { session in
-                        sessionRow(session)
+                        metric(online ? app.text("home.online") : app.text("home.offline"), app.text("common.status"))
+                        metric(health?.database == "ok" ? app.text("health.ok") : app.text("common.unavailable"), app.text("settings.database"))
+                        metric(health?.geminiConfigured == true ? app.text("health.ok") : app.text("common.unavailable"), "Gemini")
                     }
                 }
 
                 Button {
-                    confirmLogout = true
+                    Task { await load() }
                 } label: {
                     HStack {
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
-                        Text(app.text("common.logout"))
+                        Image(systemName: "arrow.clockwise")
+                        Text(app.text("connection.refresh"))
                         Spacer()
                     }
                     .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                    .foregroundStyle(NexusTheme.danger)
+                    .foregroundStyle(NexusTheme.emerald)
                     .padding(12)
-                    .background(NexusTheme.danger.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .background(NexusTheme.emerald.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .padding(.top, 6)
@@ -76,15 +52,6 @@ struct SecurityView: View {
         }
         .task { await load() }
         .refreshable { await load() }
-        .confirmationDialog(app.text("common.logout"), isPresented: $confirmLogout, titleVisibility: .visible) {
-            Button(app.text("common.logout"), role: .destructive) {
-                Task {
-                    await app.signOut()
-                    dismiss()
-                }
-            }
-            Button(app.text("common.cancel"), role: .cancel) {}
-        }
     }
 
     private var shieldCard: some View {
@@ -93,19 +60,19 @@ struct SecurityView: View {
                 Circle()
                     .fill(NexusTheme.emerald.opacity(0.12))
                     .frame(width: 54, height: 54)
-                Image(systemName: status?.authenticated == true ? "lock.shield.fill" : "lock.shield")
+                Image(systemName: app.health?.status == "ok" ? "lock.shield.fill" : "lock.shield")
                     .font(.system(size: 24))
-                    .foregroundStyle(status?.authenticated == true ? NexusTheme.emerald : NexusTheme.gold)
+                    .foregroundStyle(app.health?.status == "ok" ? NexusTheme.emerald : NexusTheme.gold)
             }
             VStack(alignment: .leading, spacing: 3) {
-                Text(status?.authenticated == true ? app.text("security.subtitle") : app.text("home.connect"))
+                Text(app.health?.status == "ok" ? app.text("security.subtitle") : app.text("home.connect"))
                     .font(.system(.subheadline, design: .rounded).weight(.bold))
                     .foregroundStyle(NexusTheme.text)
                 HStack(spacing: 6) {
                     Circle()
-                        .fill(app.health == nil ? NexusTheme.danger : NexusTheme.emerald)
+                        .fill(app.health?.status == "ok" ? NexusTheme.emerald : NexusTheme.danger)
                         .frame(width: 6, height: 6)
-                    Text(app.health == nil ? app.text("home.offline") : app.text("home.online"))
+                    Text(app.health?.status == "ok" ? app.text("home.online") : app.text("home.offline"))
                         .font(.system(size: 10, weight: .semibold, design: .rounded))
                         .foregroundStyle(NexusTheme.muted)
                     if let health = app.health {
@@ -142,38 +109,12 @@ struct SecurityView: View {
         .background(.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
     }
 
-    private func sessionRow(_ session: NexusSession) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: session.current ? "iphone" : "desktopcomputer")
-                .foregroundStyle(session.current ? NexusTheme.emerald : NexusTheme.muted)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(session.current ? app.text("security.current") : session.device)
-                    .font(.system(.caption, design: .rounded).weight(.semibold))
-                    .foregroundStyle(NexusTheme.text)
-                Text(session.lastSeenAt)
-                    .font(.system(size: 8.5, design: .monospaced))
-                    .foregroundStyle(NexusTheme.muted)
-                    .lineLimit(1)
-            }
-            Spacer()
-            if !session.current {
-                Button(app.text("security.revoke")) {
-                    Task { await revoke(session) }
-                }
-                .font(.system(size: 9.5, weight: .bold, design: .rounded))
-                .foregroundStyle(NexusTheme.danger)
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(11)
-        .background(.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
-    }
-
     private func metric(_ value: String, _ label: String) -> some View {
         VStack(spacing: 2) {
             Text(value)
-                .font(.system(.headline, design: .rounded).weight(.bold))
+                .font(.system(size: 11, weight: .bold, design: .rounded))
                 .foregroundStyle(NexusTheme.text)
+                .lineLimit(1)
             Text(label)
                 .font(.system(size: 8.5, design: .rounded))
                 .foregroundStyle(NexusTheme.muted)
@@ -203,26 +144,14 @@ struct SecurityView: View {
     private func load() async {
         loading = true
         defer { loading = false }
-        guard let client = app.apiClient else { return }
-        do {
-            async let statusTask = client.securityStatus()
-            async let sessionsTask = client.sessions()
-            status = try await statusTask
-            sessions = try await sessionsTask
-            errorMessage = nil
-        } catch let error as APIError {
-            if error.isUnauthorized { app.handleUnauthorized() }
-            else { errorMessage = app.friendly(error) }
-        } catch {
-            errorMessage = app.friendly(error)
+        await app.refreshHealth()
+        guard let client = app.apiClient else {
+            errorMessage = app.text("common.requiredServer")
+            return
         }
-    }
-
-    private func revoke(_ session: NexusSession) async {
-        guard let client = app.apiClient else { return }
         do {
-            try await client.revokeSession(id: session.id)
-            await load()
+            status = try await client.securityStatus()
+            errorMessage = nil
         } catch {
             errorMessage = app.friendly(error)
         }

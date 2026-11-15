@@ -98,7 +98,7 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("\(app.text("home.welcome")), \(app.user?.name.components(separatedBy: " ").first ?? "")")
+                    Text("\(app.text("home.welcome")), \("NEXUS")")
                         .font(.system(.caption, design: .rounded).weight(.medium))
                         .foregroundStyle(NexusTheme.muted)
                     Text("NEXUS")
@@ -274,8 +274,7 @@ struct HomeView: View {
     }
 
     private var initials: String {
-        let source = app.user?.name.isEmpty == false ? app.user?.name : app.user?.email
-        let parts = (source ?? "N").split(separator: " ")
+        let parts = "NEXUS AI".split(separator: " ")
         return parts.prefix(2).compactMap { $0.first.map(String.init) }.joined().uppercased()
     }
 
@@ -314,9 +313,6 @@ struct HomeView: View {
             app.health = try await health
             security = try await status
             loadError = nil
-        } catch let error as APIError {
-            if error.isUnauthorized { app.handleUnauthorized() }
-            else { loadError = app.friendly(error) }
         } catch {
             loadError = app.friendly(error)
         }

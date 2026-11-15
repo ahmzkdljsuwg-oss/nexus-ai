@@ -27,7 +27,6 @@ struct EmptyBody: Encodable {}
 
 struct APIClient {
     let baseURL: URL
-    var token: String?
 
     private var session: URLSession {
         let config = URLSessionConfiguration.default
@@ -37,52 +36,12 @@ struct APIClient {
         return URLSession(configuration: config)
     }
 
-    init(baseURL: URL, token: String?) {
+    init(baseURL: URL) {
         self.baseURL = baseURL
-        self.token = token
     }
 
     func health() async throws -> NexusHealth {
         try await get("api/health", as: NexusHealth.self)
-    }
-
-    func register(email: String, name: String, password: String) async throws -> NexusToken {
-        try await send(
-            "api/auth/register",
-            method: "POST",
-            body: RegisterBody(email: email, name: name, password: password),
-            as: NexusToken.self
-        )
-    }
-
-    func login(email: String, password: String) async throws -> NexusToken {
-        try await send(
-            "api/auth/login",
-            method: "POST",
-            body: LoginBody(email: email, password: password, device: "iPhone"),
-            as: NexusToken.self
-        )
-    }
-
-    func account() async throws -> NexusUser {
-        try await get("api/account", as: NexusUser.self)
-    }
-
-    func updateSettings(locale: String?, appearance: String?, soundEnabled: Bool?, voiceEnabled: Bool?) async throws -> NexusUser {
-        try await send(
-            "api/settings",
-            method: "PATCH",
-            body: SettingsBody(locale: locale, appearance: appearance, soundEnabled: soundEnabled, assistantVoice: voiceEnabled),
-            as: NexusUser.self
-        )
-    }
-
-    func updateAccount(name: String?, password: String?) async throws -> NexusUser {
-        struct Body: Encodable {
-            let name: String?
-            let password: String?
-        }
-        return try await send("api/account", method: "PATCH", body: Body(name: name, password: password), as: NexusUser.self)
     }
 
     func projects() async throws -> [NexusProject] {
@@ -158,18 +117,6 @@ struct APIClient {
         try await get("api/security/status", as: SecurityStatus.self)
     }
 
-    func sessions() async throws -> [NexusSession] {
-        try await get("api/auth/sessions", as: [NexusSession].self)
-    }
-
-    func revokeSession(id: String) async throws {
-        try await sendNoContent("api/auth/sessions/\(id)", method: "DELETE")
-    }
-
-    func logout() async throws {
-        try await sendNoContent("api/auth/logout", method: "POST")
-    }
-
     func tools() async throws -> [NexusTool] {
         try await get("api/tools", as: [NexusTool].self)
     }
@@ -214,9 +161,6 @@ struct APIClient {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        if let token {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
         if let body {
             request.httpBody = body
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -245,25 +189,6 @@ struct APIClient {
         }
         return nil
     }
-}
-
-private struct RegisterBody: Encodable {
-    let email: String
-    let name: String
-    let password: String
-}
-
-private struct LoginBody: Encodable {
-    let email: String
-    let password: String
-    let device: String
-}
-
-private struct SettingsBody: Encodable {
-    let locale: String?
-    let appearance: String?
-    let soundEnabled: Bool?
-    let assistantVoice: Bool?
 }
 
 private struct ProjectBody: Encodable {

@@ -8,7 +8,7 @@ const BASE_KEY = 'nexus.baseUrl';
 const LANG_KEY = 'nexus.language';
 
 export function AppProvider({ children }) {
-  const configured = Constants.expoConfig?.extra?.apiBaseUrl || '';
+  const configured = process.env.EXPO_PUBLIC_API_BASE_URL || Constants.expoConfig?.extra?.apiBaseUrl || '';
   const [baseUrl, setBaseUrl] = useState(normaliseBaseUrl(configured));
   const [language, setLanguageState] = useState('en');
   const [ready, setReady] = useState(false);

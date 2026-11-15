@@ -27,51 +27,29 @@ final class ScreenshotTests: XCTestCase {
     }
 
     func testFullAppFlowWithScreenshots() throws {
-        let serverField = app.textFields["auth.server"]
-        XCTAssertTrue(serverField.waitForExistence(timeout: 20), "auth screen did not appear")
-        snap("01-auth")
+        let connection = app.buttons["home.connection"]
+        XCTAssertTrue(connection.waitForExistence(timeout: 20), "home did not open without login")
+        snap("01-home")
 
+        connection.tap()
+        let serverField = app.textFields["settings.server"]
+        XCTAssertTrue(serverField.waitForExistence(timeout: 10), "server field missing")
         serverField.tap()
         serverField.typeText(serverURL)
-        let save = app.buttons["Use this server"]
-        XCTAssertTrue(save.exists)
-        save.tap()
-
-        let registerSegment = app.segmentedControls.buttons["Create account"]
-        XCTAssertTrue(registerSegment.waitForExistence(timeout: 10))
-        registerSegment.tap()
-
-        let name = app.textFields["auth.name"]
-        XCTAssertTrue(name.waitForExistence(timeout: 10), "name field missing")
-        name.tap()
-        name.typeText("Screenshot Runner")
-
-        let email = app.textFields["auth.email"]
-        email.tap()
-        email.typeText("shot-\(UUID().uuidString.prefix(8))@example.com")
-
-        let password = app.secureTextFields["auth.password"]
-        password.tap()
-        password.typeText("NexusTest!2026")
-
-        app.buttons["auth.submit"].tap()
+        app.buttons["Use this server"].tap()
+        sleep(2)
+        snap("02-server-status")
+        closeWindow()
 
         let assistantTile = app.buttons["module.assistant"]
-        XCTAssertTrue(assistantTile.waitForExistence(timeout: 30), "home did not appear after registration")
-        sleep(2)
-        snap("02-home")
-
-        app.buttons["home.connection"].tap()
-        sleep(1)
-        snap("03-server-status")
-        closeWindow()
+        XCTAssertTrue(assistantTile.waitForExistence(timeout: 30), "home tiles missing")
 
         for module in ["assistant", "files", "projects", "studio", "security", "store", "settings"] {
             let tile = app.buttons["module.\(module)"]
             XCTAssertTrue(tile.waitForExistence(timeout: 10), "missing module \(module)")
             tile.tap()
             sleep(2)
-            snap("04-\(module)")
+            snap("03-\(module)")
             closeWindow()
             XCTAssertTrue(app.buttons["module.assistant"].waitForExistence(timeout: 10), "did not return home")
         }
@@ -83,7 +61,7 @@ final class ScreenshotTests: XCTestCase {
         arabic.tap()
         sleep(2)
         XCTAssertTrue(app.staticTexts["الإعدادات"].waitForExistence(timeout: 10), "Arabic UI did not apply")
-        snap("05-settings-arabic")
+        snap("04-settings-arabic")
 
         let english = app.buttons["English"]
         XCTAssertTrue(english.waitForExistence(timeout: 5))

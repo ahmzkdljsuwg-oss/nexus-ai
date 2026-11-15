@@ -167,9 +167,6 @@ struct StudioView: View {
             files = try await fileTask
             projects = try await projectTask
             errorMessage = nil
-        } catch let error as APIError {
-            if error.isUnauthorized { app.handleUnauthorized() }
-            else { errorMessage = app.friendly(error) }
         } catch {
             errorMessage = app.friendly(error)
         }
@@ -368,9 +365,6 @@ private struct CodeWorkbenchView: View {
             let reply = try await client.assistant(message: message, chatID: nil, projectID: projectID, mode: mode)
             resultTitle = title
             result = reply.answer
-        } catch let error as APIError {
-            if error.isUnauthorized { app.handleUnauthorized() }
-            else { errorMessage = app.friendly(error) }
         } catch {
             errorMessage = app.friendly(error)
         }

@@ -3,6 +3,8 @@ import SwiftUI
 struct ConnectionStatusView: View {
     @EnvironmentObject private var app: AppState
     @Environment(\.dismiss) private var dismiss
+    @State private var draftURL = ""
+    @State private var saving = false
 
     var body: some View {
         ZStack {
@@ -10,6 +12,7 @@ struct ConnectionStatusView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     header
+                    serverCard
                     statusCard
                     detailsCard
                     NexusPrimaryButton(
@@ -24,7 +27,47 @@ struct ConnectionStatusView: View {
             }
         }
         .environment(\.layoutDirection, app.locale.layoutDirection)
-        .task { await app.refreshHealth() }
+        .task {
+            draftURL = app.baseURLString
+            await app.refreshHealth()
+        }
+    }
+
+    private var serverCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionTitle(text: app.text("connection.endpoint"))
+            TextField("https://your-service.up.railway.app", text: $draftURL)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .keyboardType(.URL)
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(NexusTheme.text)
+                .padding(12)
+                .background(.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .accessibilityIdentifier("settings.server")
+            HStack(spacing: 10) {
+                NexusPrimaryButton(title: app.text("connection.save"), icon: "link", loading: saving) {
+                    Task {
+                        saving = true
+                        await app.configureServer(draftURL)
+                        draftURL = app.baseURLString
+                        saving = false
+                    }
+                }
+                .accessibilityIdentifier("settings.saveServer")
+                Button(app.text("connection.refresh")) {
+                    Task { await app.refreshHealth() }
+                }
+                .font(.system(.caption, design: .rounded).weight(.semibold))
+                .foregroundStyle(NexusTheme.emerald)
+                .buttonStyle(.plain)
+            }
+            Text(app.text("common.localMode"))
+                .font(.system(size: 9, design: .rounded))
+                .foregroundStyle(NexusTheme.muted)
+        }
+        .padding(16)
+        .glassPanel(app.appearance)
     }
 
     private var header: some View {

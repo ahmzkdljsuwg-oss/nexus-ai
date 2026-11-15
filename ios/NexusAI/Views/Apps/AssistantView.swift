@@ -203,7 +203,7 @@ struct AssistantView: View {
                         .background(.white.opacity(0.06), in: Circle())
                 }
                 .buttonStyle(.plain)
-                .disabled(app.user?.assistantVoice == false)
+                .disabled(!app.assistantVoice)
 
                 TextField(app.text("assistant.placeholder"), text: $input, axis: .vertical)
                     .lineLimit(1...5)
@@ -274,9 +274,6 @@ struct AssistantView: View {
             } else if let first = chats.first {
                 await open(first)
             }
-        } catch let error as APIError {
-            if error.isUnauthorized { app.handleUnauthorized() }
-            else { errorMessage = app.friendly(error) }
         } catch {
             errorMessage = app.friendly(error)
         }
@@ -296,9 +293,6 @@ struct AssistantView: View {
             currentChatID = detail.id
             projectID = detail.projectID
             errorMessage = nil
-        } catch let error as APIError {
-            if error.isUnauthorized { app.handleUnauthorized() }
-            else { errorMessage = app.friendly(error) }
         } catch {
             errorMessage = app.friendly(error)
         }
@@ -337,9 +331,6 @@ struct AssistantView: View {
             if let client = app.apiClient {
                 chats = (try? await client.chats()) ?? chats
             }
-        } catch let error as APIError {
-            if error.isUnauthorized { app.handleUnauthorized() }
-            else { errorMessage = app.friendly(error) }
         } catch {
             errorMessage = app.friendly(error)
         }

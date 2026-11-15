@@ -150,9 +150,6 @@ struct ProjectsView: View {
         do {
             projects = try await client.projects()
             errorMessage = nil
-        } catch let error as APIError {
-            if error.isUnauthorized { app.handleUnauthorized() }
-            else { errorMessage = app.friendly(error) }
         } catch {
             errorMessage = app.friendly(error)
         }
@@ -379,9 +376,6 @@ private struct ProjectDetailView: View {
             files = allFiles.filter { $0.projectID == project.id }
             chats = allChats.filter { $0.projectID == project.id }
             errorMessage = nil
-        } catch let error as APIError {
-            if error.isUnauthorized { app.handleUnauthorized() }
-            else { errorMessage = app.friendly(error) }
         } catch {
             errorMessage = app.friendly(error)
         }

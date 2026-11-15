@@ -3,7 +3,6 @@ import SwiftUI
 struct ControlCenterView: View {
     @EnvironmentObject private var app: AppState
     @Environment(\.dismiss) private var dismiss
-    @State private var confirmLogout = false
     @State private var showConnection = false
 
     var body: some View {
@@ -14,7 +13,6 @@ struct ControlCenterView: View {
                     header
                     connectionCard
                     preferencesCard
-                    accountCard
                 }
                 .padding(20)
             }
@@ -23,12 +21,6 @@ struct ControlCenterView: View {
         .sheet(isPresented: $showConnection) {
             ConnectionStatusView()
                 .presentationDetents([.medium, .large])
-        }
-        .confirmationDialog(app.text("common.logout"), isPresented: $confirmLogout, titleVisibility: .visible) {
-            Button(app.text("common.logout"), role: .destructive) {
-                Task { await app.signOut(); dismiss() }
-            }
-            Button(app.text("common.cancel"), role: .cancel) {}
         }
     }
 
@@ -45,7 +37,7 @@ struct ControlCenterView: View {
             }
             Spacer()
             Button {
-                Task { await app.refreshHealth(); await app.refreshAccount() }
+                Task { await app.refreshHealth() }
             } label: {
                 Image(systemName: "arrow.clockwise")
                     .foregroundStyle(NexusTheme.emerald)
@@ -134,7 +126,7 @@ struct ControlCenterView: View {
                 label(icon: "speaker.wave.2", text: app.text("common.sound"))
                 Spacer()
                 Toggle("", isOn: Binding(
-                    get: { app.user?.soundEnabled ?? true },
+                    get: { app.soundEnabled },
                     set: { value in Task { await app.updateSettings(soundEnabled: value) } }
                 ))
                 .labelsHidden()
@@ -148,49 +140,13 @@ struct ControlCenterView: View {
                 label(icon: "mic", text: app.text("common.voice"))
                 Spacer()
                 Toggle("", isOn: Binding(
-                    get: { app.user?.assistantVoice ?? true },
+                    get: { app.assistantVoice },
                     set: { value in Task { await app.updateSettings(voiceEnabled: value) } }
                 ))
                 .labelsHidden()
                 .tint(NexusTheme.emerald)
             }
             .padding(.vertical, 11)
-        }
-        .padding(16)
-        .glassPanel(app.appearance)
-    }
-
-    private var accountCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionTitle(text: app.text("common.account"))
-            HStack(spacing: 12) {
-                Image(systemName: "person.crop.circle.fill")
-                    .font(.system(size: 34))
-                    .foregroundStyle(NexusTheme.gold)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(app.user?.name.isEmpty == false ? app.user?.name ?? "" : "NEXUS")
-                        .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                        .foregroundStyle(NexusTheme.text)
-                    Text(app.user?.email ?? "")
-                        .font(.system(.caption2, design: .monospaced))
-                        .foregroundStyle(NexusTheme.muted)
-                }
-                Spacer()
-            }
-            Button {
-                confirmLogout = true
-            } label: {
-                HStack {
-                    Image(systemName: "rectangle.portrait.and.arrow.right")
-                    Text(app.text("common.logout"))
-                    Spacer()
-                }
-                .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                .foregroundStyle(NexusTheme.danger)
-                .padding(12)
-                .background(NexusTheme.danger.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            }
-            .buttonStyle(.plain)
         }
         .padding(16)
         .glassPanel(app.appearance)

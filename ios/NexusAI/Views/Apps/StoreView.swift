@@ -111,9 +111,6 @@ struct StoreView: View {
         do {
             tools = try await client.tools()
             errorMessage = nil
-        } catch let error as APIError {
-            if error.isUnauthorized { app.handleUnauthorized() }
-            else { errorMessage = app.friendly(error) }
         } catch {
             errorMessage = app.friendly(error)
         }
