@@ -30,7 +30,11 @@ final class AppState: ObservableObject {
     private let voiceKey = "nexus.voice"
 
     init() {
-        baseURLString = UserDefaults.standard.string(forKey: baseKey) ?? ""
+        let saved = UserDefaults.standard.string(forKey: baseKey) ?? ""
+        let bundled = ProcessInfo.processInfo.environment["NEXUS_API_BASE_URL"]
+            ?? Bundle.main.object(forInfoDictionaryKey: "NEXUS_API_BASE_URL") as? String
+            ?? ""
+        baseURLString = saved.isEmpty ? bundled : saved
         let storedLocale = UserDefaults.standard.string(forKey: localeKey) ?? "en"
         locale = AppLanguage(rawValue: storedLocale) ?? .english
         appearance = UserDefaults.standard.string(forKey: appearanceKey) ?? "dark"

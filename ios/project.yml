@@ -39,6 +39,7 @@ targets:
         INFOPLIST_KEY_NSMicrophoneUsageDescription: NEXUS AI uses the microphone only while you hold the voice button, so the assistant can hear your question.
         INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: NEXUS AI converts your recorded voice into text on this device so it can send your question to the NEXUS server.
         INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking: YES
+        INFOPLIST_KEY_NEXUS_API_BASE_URL: $(NEXUS_API_BASE_URL)
     scheme:
       testTargets:
         - NexusAIUITests

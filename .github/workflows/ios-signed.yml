@@ -22,6 +22,7 @@ jobs:
     timeout-minutes: 45
     env:
       BUNDLE_ID: ai.nexus.app
+      NEXUS_API_BASE_URL: ${{ vars.NEXUS_API_BASE_URL }}
     steps:
       - uses: actions/checkout@v4
 
