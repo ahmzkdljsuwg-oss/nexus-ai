@@ -14,3 +14,7 @@ DerivedData/
 ios/build/
 *.ipa
 *.ipa.sha256
+mobile/node_modules/
+mobile/.expo/
+mobile/ios/Pods/
+mobile/ios/build/

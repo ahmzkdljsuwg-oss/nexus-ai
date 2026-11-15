@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "NEXUS AI",
+    "slug": "nexus-ai",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "nexusai",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0A0F"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "ai.nexus.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "NEXUS AI uses a chart screenshot only when you choose to attach one.",
+        "NSCameraUsageDescription": "NEXUS AI can use the camera only when you choose to capture a chart.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "ai.nexus.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#0A0A0F"
+      }
+    },
+    "extra": {
+      "apiBaseUrl": ""
+    }
+  }
+}

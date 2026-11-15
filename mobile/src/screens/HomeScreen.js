@@ -1,0 +1,188 @@
+import React, { useEffect, useRef } from 'react';
+import {
+  ActivityIndicator, Animated, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Colors } from '../theme/colors';
+import { Fonts } from '../theme/fonts';
+import { useApp } from '../state/AppContext';
+import { MarketCard } from '../components/MarketCard';
+import { ConnectionBadge } from '../components/ui';
+import { t } from '../i18n';
+
+const MARKET_ORDER = ['OTC', 'SMARTY', 'FOOTBALL', 'LUXURY', 'AI', 'CRICKET', 'FOREX'];
+
+export default function HomeScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
+  const { overview, marketsState, connection, language, lastUpdated, refresh, baseUrl } = useApp();
+  const header = useRef(new Animated.Value(-30)).current;
+
+  useEffect(() => {
+    Animated.spring(header, { toValue: 0, tension: 55, friction: 9, useNativeDriver: true }).start();
+  }, [header]);
+
+  const rows = MARKET_ORDER.map((key) => overview?.markets?.find((item) => item.key === key))
+    .filter(Boolean);
+  const available = rows.filter((item) => item.status === 'LIVE').length;
+  const ai = overview?.ai || {};
+  const gemini = ai.gemini;
+  const mistral = ai.mistral;
+
+  return (
+    <View style={styles.container}>
+      <Animated.View style={{ transform: [{ translateY: header }] }}>
+        <LinearGradient colors={['#16161F', Colors.background]} style={[styles.header, { paddingTop: insets.top + 12 }]}>
+          <View style={styles.brandRow}>
+            <View style={styles.logo}>
+              <Text style={styles.logoText}>N</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.appName}>NEXUS AI</Text>
+              <Text style={styles.tagline}>MULTI-MARKET INTELLIGENCE</Text>
+            </View>
+            <TouchableOpacity onPress={() => navigation.navigate('SettingsTab')} style={styles.settingsBtn}>
+              <Text style={{ color: Colors.gold, fontSize: 18 }}>⚙</Text>
+            </TouchableOpacity>
+          </View>
+          <ConnectionBadge connection={connection} language={language} />
+        </LinearGradient>
+      </Animated.View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120 }}
+        refreshControl={<RefreshControl refreshing={marketsState === 'refreshing'} onRefresh={refresh} tintColor={Colors.gold} />}
+      >
+        {!baseUrl ? (
+          <TouchableOpacity onPress={() => navigation.navigate('SettingsTab')} activeOpacity={0.9}>
+            <LinearGradient colors={['#2A2110', '#17130A']} style={styles.setupCard}>
+              <Text style={styles.setupTitle}>{t(language, 'CONNECT YOUR BACKEND', 'اربط الخادم الخاص بك')}</Text>
+              <Text style={styles.setupText}>
+                {t(
+                  language,
+                  'No server URL is saved. Open Settings and enter the HTTPS address of your deployed NEXUS AI backend. No price is shown until the backend answers.',
+                  'لا يوجد رابط خادم محفوظ. افتح الإعدادات وأدخل عنوان HTTPS لخادم NEXUS AI المنشور. لن يظهر أي سعر قبل استجابة الخادم.',
+                )}
+              </Text>
+              <Text style={styles.setupAction}>{t(language, 'Open Settings →', 'افتح الإعدادات ←')}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        ) : null}
+
+        <LinearGradient colors={['#102318', '#0C1710']} style={styles.hero}>
+          <View style={styles.heroTop}>
+            <Text style={styles.heroBadge}>{t(language, 'EVIDENCE-FIRST ENGINE', 'محرك قائم على الأدلة')}</Text>
+            <Text style={styles.heroCount}>{available}/7</Text>
+          </View>
+          <Text style={styles.heroTitle}>
+            {t(language, 'Seven markets. One honest standard.', 'سبعة أسواق. معيار واحد صادق.')}
+          </Text>
+          <Text style={styles.heroText}>
+            {t(
+              language,
+              'Candle-by-candle structure, Alligator and MA 200 confirmation. If the feed fails validation, the market states DATA UNAVAILABLE instead of inventing a signal.',
+              'تحليل شمعة بشمعة مع تأكيد Alligator و MA 200. إذا فشل التحقق من المصدر يظهر DATA UNAVAILABLE بدلاً من اختراع إشارة.',
+            )}
+          </Text>
+          <View style={styles.heroStats}>
+            <View style={styles.heroStat}>
+              <Text style={styles.heroStatValue}>{gemini?.configured ? 'READY' : '—'}</Text>
+              <Text style={styles.heroStatLabel}>GEMINI</Text>
+            </View>
+            <View style={styles.heroDivider} />
+            <View style={styles.heroStat}>
+              <Text style={styles.heroStatValue}>{mistral?.configured ? 'READY' : '—'}</Text>
+              <Text style={styles.heroStatLabel}>MISTRAL</Text>
+            </View>
+            <View style={styles.heroDivider} />
+            <View style={styles.heroStat}>
+              <Text style={styles.heroStatValue}>{lastUpdated ? new Date(lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</Text>
+              <Text style={styles.heroStatLabel}>{t(language, 'UPDATED', 'آخر تحديث')}</Text>
+            </View>
+          </View>
+        </LinearGradient>
+
+        <View style={styles.sectionHead}>
+          <Text style={styles.sectionTitle}>{t(language, 'MARKETS', 'الأسواق')}</Text>
+          <Text style={styles.sectionSub}>{t(language, 'Each market is analysed separately', 'كل سوق يُحلل بشكل منفصل')}</Text>
+        </View>
+
+        {marketsState === 'loading' && !rows.length ? (
+          <View style={styles.loading}>
+            <ActivityIndicator color={Colors.gold} />
+            <Text style={styles.loadingText}>{t(language, 'Reading verified sources…', 'جارٍ قراءة المصادر الموثقة…')}</Text>
+          </View>
+        ) : null}
+
+        <View style={styles.grid}>
+          {rows.map((market, index) => (
+            <MarketCard
+              key={market.key}
+              market={market}
+              language={language}
+              index={index}
+              onPress={() => navigation.navigate('MarketDetail', { marketKey: market.key })}
+            />
+          ))}
+        </View>
+
+        {marketsState === 'error' ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorTitle}>{t(language, 'DATA UNAVAILABLE', 'البيانات غير متاحة')}</Text>
+            <Text style={styles.errorText}>{connection.detail}</Text>
+            <TouchableOpacity onPress={refresh}><Text style={styles.retry}>{t(language, 'Retry', 'إعادة المحاولة')}</Text></TouchableOpacity>
+          </View>
+        ) : null}
+
+        <View style={styles.note}>
+          <Text style={styles.noteText}>
+            {t(
+              language,
+              'NEXUS AI analyses data only. It never executes trades and never guarantees profit.',
+              'NEXUS AI يحلل البيانات فقط. لا ينفذ صفقات ولا يضمن الربح.',
+            )}
+          </Text>
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.background },
+  header: { paddingHorizontal: 16, paddingBottom: 14, gap: 10 },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  logo: { width: 40, height: 40, borderRadius: 12, backgroundColor: Colors.gold, alignItems: 'center', justifyContent: 'center' },
+  logoText: { color: Colors.background, fontSize: 24, fontWeight: '900' },
+  appName: { color: Colors.white, fontSize: Fonts.sizes.xl, fontWeight: '900', letterSpacing: 1.5 },
+  tagline: { color: Colors.textMuted, fontSize: 9, letterSpacing: 1.2, marginTop: 1 },
+  settingsBtn: { width: 36, height: 36, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
+  setupCard: { borderRadius: 18, borderWidth: 1, borderColor: Colors.gold + '55', padding: 16, marginBottom: 14 },
+  setupTitle: { color: Colors.gold, fontSize: Fonts.sizes.sm, fontWeight: '900', letterSpacing: 0.7 },
+  setupText: { color: Colors.textSecondary, fontSize: Fonts.sizes.sm, lineHeight: 20, marginTop: 6 },
+  setupAction: { color: Colors.goldLight, fontSize: Fonts.sizes.sm, fontWeight: '800', marginTop: 10 },
+  hero: { borderRadius: 24, padding: 18, borderWidth: 1, borderColor: Colors.green + '30', marginBottom: 20 },
+  heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  heroBadge: { color: Colors.greenPositive, fontSize: 9, fontWeight: '900', letterSpacing: 1 },
+  heroCount: { color: Colors.white, fontSize: Fonts.sizes.lg, fontWeight: '900' },
+  heroTitle: { color: Colors.white, fontSize: Fonts.sizes.xxl, fontWeight: '900', marginTop: 10, lineHeight: 30 },
+  heroText: { color: Colors.textSecondary, fontSize: Fonts.sizes.sm, lineHeight: 20, marginTop: 8 },
+  heroStats: { flexDirection: 'row', alignItems: 'center', marginTop: 16, backgroundColor: '#00000033', borderRadius: 14, padding: 10 },
+  heroStat: { flex: 1, alignItems: 'center' },
+  heroStatValue: { color: Colors.goldLight, fontSize: Fonts.sizes.md, fontWeight: '900' },
+  heroStatLabel: { color: Colors.textMuted, fontSize: 8, letterSpacing: 0.8, marginTop: 2 },
+  heroDivider: { width: 1, height: 24, backgroundColor: Colors.border },
+  sectionHead: { marginBottom: 12 },
+  sectionTitle: { color: Colors.white, fontSize: Fonts.sizes.lg, fontWeight: '900', letterSpacing: 1 },
+  sectionSub: { color: Colors.textMuted, fontSize: Fonts.sizes.xs, marginTop: 2 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  loading: { alignItems: 'center', paddingVertical: 30, gap: 10 },
+  loadingText: { color: Colors.textSecondary, fontSize: Fonts.sizes.sm },
+  errorBox: { borderWidth: 1, borderColor: Colors.red + '55', backgroundColor: Colors.red + '10', borderRadius: 16, padding: 14, marginTop: 4 },
+  errorTitle: { color: Colors.red, fontSize: Fonts.sizes.sm, fontWeight: '900', letterSpacing: 0.6 },
+  errorText: { color: Colors.textSecondary, fontSize: Fonts.sizes.xs, marginTop: 4, lineHeight: 18 },
+  retry: { color: Colors.gold, fontSize: Fonts.sizes.sm, fontWeight: '800', marginTop: 8 },
+  note: { marginTop: 4, marginBottom: 12, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: Colors.border },
+  noteText: { color: Colors.textMuted, fontSize: Fonts.sizes.xs, lineHeight: 18, textAlign: 'center' },
+});
