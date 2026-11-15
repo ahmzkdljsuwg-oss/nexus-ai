@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../theme/colors';
+import { PremiumBackdrop } from '../components/PremiumBackdrop';
 import { Fonts } from '../theme/fonts';
 import { useApp } from '../state/AppContext';
 import { CandleChart, DirectionBadge, FadeIn, PrimaryButton } from '../components/ui';
@@ -84,6 +85,7 @@ export default function MarketDetailScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
+      <PremiumBackdrop />
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
           <Text style={styles.backText}>‹</Text>

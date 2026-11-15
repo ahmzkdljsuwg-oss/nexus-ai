@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../theme/colors';
+import { PremiumBackdrop } from '../components/PremiumBackdrop';
 import { Fonts } from '../theme/fonts';
 import { useApp } from '../state/AppContext';
 import { DirectionBadge } from '../components/ui';
@@ -34,6 +35,7 @@ export default function HistoryScreen() {
 
   return (
     <View style={styles.container}>
+      <PremiumBackdrop />
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <View>
           <Text style={styles.title}>{t(language, 'TRADE HISTORY', 'سجل الصفقات')}</Text>

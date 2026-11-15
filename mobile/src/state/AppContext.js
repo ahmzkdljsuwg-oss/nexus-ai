@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { createClient, friendlyError, normaliseBaseUrl } from '../api/client';
+import { pickBaseUrl } from './startup';
 
 const AppContext = createContext(null);
 const BASE_KEY = 'nexus.baseUrl';
@@ -9,7 +10,9 @@ const LANG_KEY = 'nexus.language';
 
 export function AppProvider({ children }) {
   const configured = process.env.EXPO_PUBLIC_API_BASE_URL || Constants.expoConfig?.extra?.apiBaseUrl || '';
-  const [baseUrl, setBaseUrl] = useState(normaliseBaseUrl(configured));
+  const automaticBaseUrl = normaliseBaseUrl(configured);
+  const [baseUrl, setBaseUrl] = useState(automaticBaseUrl);
+  const [booting, setBooting] = useState(true);
   const [language, setLanguageState] = useState('en');
   const [ready, setReady] = useState(false);
   const [connection, setConnection] = useState({ state: 'unconfigured', detail: 'Backend URL is not configured.', latency: null });
@@ -27,7 +30,8 @@ export function AppProvider({ children }) {
         AsyncStorage.getItem(BASE_KEY),
         AsyncStorage.getItem(LANG_KEY),
       ]);
-      if (savedUrl) setBaseUrl(normaliseBaseUrl(savedUrl));
+      const resolved = pickBaseUrl({ buildUrl: configured, savedUrl });
+      if (resolved) setBaseUrl(normaliseBaseUrl(resolved));
       if (savedLang === 'ar' || savedLang === 'en') setLanguageState(savedLang);
       setReady(true);
     })().catch(() => setReady(true));
@@ -72,8 +76,13 @@ export function AppProvider({ children }) {
   }, [client]);
 
   const refresh = useCallback(async () => {
-    const ok = await checkHealth();
-    if (ok) await refreshMarkets();
+    setBooting(true);
+    try {
+      const ok = await checkHealth();
+      if (ok) await refreshMarkets();
+    } finally {
+      setBooting(false);
+    }
   }, [checkHealth, refreshMarkets]);
 
   useEffect(() => {
@@ -93,6 +102,12 @@ export function AppProvider({ children }) {
     setTimeout(refresh, 50);
   }, [refresh]);
 
+  const useAutomaticBaseUrl = useCallback(async () => {
+    await AsyncStorage.removeItem(BASE_KEY);
+    setBaseUrl(automaticBaseUrl);
+    setTimeout(refresh, 50);
+  }, [automaticBaseUrl, refresh]);
+
   const setLanguage = useCallback(async (next) => {
     setLanguageState(next);
     await AsyncStorage.setItem(LANG_KEY, next);
@@ -100,10 +115,13 @@ export function AppProvider({ children }) {
 
   const value = useMemo(() => ({
     ready,
+    booting,
     baseUrl,
+    automaticBaseUrl,
     language,
     setLanguage,
     saveBaseUrl,
+    useAutomaticBaseUrl,
     connection,
     overview,
     marketsState,
@@ -111,7 +129,7 @@ export function AppProvider({ children }) {
     refresh,
     checkHealth,
     client,
-  }), [ready, baseUrl, language, setLanguage, saveBaseUrl, connection, overview, marketsState, lastUpdated, refresh, checkHealth, client]);
+  }), [ready, booting, baseUrl, automaticBaseUrl, language, setLanguage, saveBaseUrl, useAutomaticBaseUrl, connection, overview, marketsState, lastUpdated, refresh, checkHealth, client]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../theme/colors';
+import { PremiumBackdrop } from '../components/PremiumBackdrop';
 import { Fonts } from '../theme/fonts';
 import { useApp } from '../state/AppContext';
 import { t } from '../i18n';
@@ -43,6 +44,7 @@ export default function ChatScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <PremiumBackdrop />
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <View>
           <Text style={styles.title}>{t(language, 'GEMINI CHAT', 'محادثة Gemini')}</Text>

@@ -5,6 +5,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../theme/colors';
+import { PremiumBackdrop } from '../components/PremiumBackdrop';
 import { Fonts } from '../theme/fonts';
 import { useApp } from '../state/AppContext';
 import { MarketCard } from '../components/MarketCard';
@@ -31,21 +32,34 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      <PremiumBackdrop />
       <Animated.View style={{ transform: [{ translateY: header }] }}>
         <LinearGradient colors={['#16161F', Colors.background]} style={[styles.header, { paddingTop: insets.top + 12 }]}>
+          <View style={styles.topBar}>
+            <View style={styles.academyPill}>
+              <Text style={styles.academyText}>◈ {t(language, 'INTELLIGENCE', 'الذكاء')}</Text>
+            </View>
+            <View style={styles.topActions}>
+              <TouchableOpacity onPress={refresh} style={styles.iconBtn}><Text style={styles.iconText}>↻</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('SettingsTab')} style={styles.iconBtn}><Text style={styles.iconText}>⚙</Text></TouchableOpacity>
+            </View>
+          </View>
           <View style={styles.brandRow}>
-            <View style={styles.logo}>
-              <Text style={styles.logoText}>N</Text>
+            <View style={styles.logoRing}>
+              <LinearGradient colors={['#24243C', '#0B0B16']} style={styles.logoInner}>
+                <Text style={styles.logoText}>N</Text>
+                <View style={styles.logoDot} />
+              </LinearGradient>
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.appName}>NEXUS AI</Text>
-              <Text style={styles.tagline}>MULTI-MARKET INTELLIGENCE</Text>
+              <Text style={styles.tagline}>ADVANCED TRADING INTELLIGENCE</Text>
+              <Text style={styles.greetDate}>
+                {new Date().toLocaleDateString(language === 'ar' ? 'ar' : 'en', { weekday: 'long', day: 'numeric', month: 'short' })}
+              </Text>
             </View>
-            <TouchableOpacity onPress={() => navigation.navigate('SettingsTab')} style={styles.settingsBtn}>
-              <Text style={{ color: Colors.gold, fontSize: 18 }}>⚙</Text>
-            </TouchableOpacity>
           </View>
-          <ConnectionBadge connection={connection} language={language} />
+          <View style={styles.badgeRow}><ConnectionBadge connection={connection} language={language} /></View>
         </LinearGradient>
       </Animated.View>
 
@@ -55,22 +69,27 @@ export default function HomeScreen({ navigation }) {
         refreshControl={<RefreshControl refreshing={marketsState === 'refreshing'} onRefresh={refresh} tintColor={Colors.gold} />}
       >
         {!baseUrl ? (
-          <TouchableOpacity onPress={() => navigation.navigate('SettingsTab')} activeOpacity={0.9}>
-            <LinearGradient colors={['#2A2110', '#17130A']} style={styles.setupCard}>
-              <Text style={styles.setupTitle}>{t(language, 'CONNECT YOUR BACKEND', 'اربط الخادم الخاص بك')}</Text>
+          <View>
+            <LinearGradient colors={['#241D0D', '#12101A']} style={styles.setupCard}>
+              <View style={styles.setupTop}>
+                <Text style={styles.setupTitle}>{t(language, 'AWAITING SERVER DEPLOYMENT', 'بانتظار نشر الخادم')}</Text>
+                <View style={styles.standbyDot} />
+              </View>
               <Text style={styles.setupText}>
                 {t(
                   language,
-                  'No server URL is saved. Open Settings and enter the HTTPS address of your deployed NEXUS AI backend. No price is shown until the backend answers.',
-                  'لا يوجد رابط خادم محفوظ. افتح الإعدادات وأدخل عنوان HTTPS لخادم NEXUS AI المنشور. لن يظهر أي سعر قبل استجابة الخادم.',
+                  'The app is ready and opens without a server. The production URL will load automatically once it is set in the build. No price is invented while the backend is offline.',
+                  'التطبيق جاهز ويفتح بدون خادم. سيُحمّل رابط الإنتاج تلقائياً بعد ضبطه في البناء. لا تُعرض أي أسعار مُختلقة أثناء انقطاع الخادم.',
                 )}
               </Text>
-              <Text style={styles.setupAction}>{t(language, 'Open Settings →', 'افتح الإعدادات ←')}</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('SettingsTab')}>
+                <Text style={styles.setupAction}>{t(language, 'Optional fallback URL →', 'رابط احتياطي اختياري ←')}</Text>
+              </TouchableOpacity>
             </LinearGradient>
-          </TouchableOpacity>
+          </View>
         ) : null}
 
-        <LinearGradient colors={['#102318', '#0C1710']} style={styles.hero}>
+        <LinearGradient colors={['#1E190D', '#0D0D18']} style={styles.hero}>
           <View style={styles.heroTop}>
             <Text style={styles.heroBadge}>{t(language, 'EVIDENCE-FIRST ENGINE', 'محرك قائم على الأدلة')}</Text>
             <Text style={styles.heroCount}>{available}/7</Text>
@@ -151,20 +170,31 @@ export default function HomeScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  header: { paddingHorizontal: 16, paddingBottom: 14, gap: 10 },
+  header: { paddingHorizontal: 16, paddingBottom: 14, gap: 12 },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  academyPill: { borderRadius: 999, borderWidth: 1, borderColor: Colors.border, backgroundColor: '#FFFFFF06', paddingHorizontal: 10, paddingVertical: 5 },
+  academyText: { color: Colors.textSecondary, fontSize: 8, fontWeight: '800', letterSpacing: 0.8 },
+  topActions: { flexDirection: 'row', gap: 7 },
+  iconBtn: { width: 32, height: 32, borderRadius: 10, borderWidth: 1, borderColor: Colors.border, backgroundColor: '#FFFFFF06', alignItems: 'center', justifyContent: 'center' },
+  iconText: { color: Colors.gold, fontSize: 14 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  logo: { width: 40, height: 40, borderRadius: 12, backgroundColor: Colors.gold, alignItems: 'center', justifyContent: 'center' },
-  logoText: { color: Colors.background, fontSize: 24, fontWeight: '900' },
-  appName: { color: Colors.white, fontSize: Fonts.sizes.xl, fontWeight: '900', letterSpacing: 1.5 },
-  tagline: { color: Colors.textMuted, fontSize: 9, letterSpacing: 1.2, marginTop: 1 },
-  settingsBtn: { width: 36, height: 36, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
+  logoRing: { width: 48, height: 48, borderRadius: 15, borderWidth: 1, borderColor: Colors.gold + '66', padding: 3, backgroundColor: Colors.gold + '10' },
+  logoInner: { flex: 1, borderRadius: 11, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#FFFFFF12' },
+  logoText: { color: Colors.goldLight, fontSize: 25, fontWeight: '900', marginTop: -2 },
+  logoDot: { position: 'absolute', right: 7, bottom: 7, width: 4, height: 4, borderRadius: 2, backgroundColor: Colors.greenPositive },
+  appName: { color: Colors.goldLight, fontSize: Fonts.sizes.xl, fontWeight: '900', letterSpacing: 1.8 },
+  tagline: { color: Colors.textMuted, fontSize: 8, letterSpacing: 1.1, marginTop: 1 },
+  greetDate: { color: Colors.textSecondary, fontSize: 9, marginTop: 3 },
+  badgeRow: { flexDirection: 'row' },
+  setupTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  standbyDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.gold },
   setupCard: { borderRadius: 18, borderWidth: 1, borderColor: Colors.gold + '55', padding: 16, marginBottom: 14 },
   setupTitle: { color: Colors.gold, fontSize: Fonts.sizes.sm, fontWeight: '900', letterSpacing: 0.7 },
   setupText: { color: Colors.textSecondary, fontSize: Fonts.sizes.sm, lineHeight: 20, marginTop: 6 },
   setupAction: { color: Colors.goldLight, fontSize: Fonts.sizes.sm, fontWeight: '800', marginTop: 10 },
-  hero: { borderRadius: 24, padding: 18, borderWidth: 1, borderColor: Colors.green + '30', marginBottom: 20 },
+  hero: { borderRadius: 24, padding: 18, borderWidth: 1, borderColor: Colors.gold + '45', marginBottom: 20, overflow: 'hidden' },
   heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  heroBadge: { color: Colors.greenPositive, fontSize: 9, fontWeight: '900', letterSpacing: 1 },
+  heroBadge: { color: Colors.goldLight, fontSize: 9, fontWeight: '900', letterSpacing: 1 },
   heroCount: { color: Colors.white, fontSize: Fonts.sizes.lg, fontWeight: '900' },
   heroTitle: { color: Colors.white, fontSize: Fonts.sizes.xxl, fontWeight: '900', marginTop: 10, lineHeight: 30 },
   heroText: { color: Colors.textSecondary, fontSize: Fonts.sizes.sm, lineHeight: 20, marginTop: 8 },

@@ -15,10 +15,10 @@ export function MarketCard({ market, language, onPress, index = 0 }) {
     <FadeIn delay={index * 55} style={styles.wrapper}>
       <Pressable onPress={onPress} style={({ pressed }) => [styles.press, pressed && { opacity: 0.88 }]}>
         <LinearGradient
-          colors={live ? [market.accent + '18', Colors.cardBg] : ['#16161F', '#101018']}
+          colors={live ? [market.accent + '22', Colors.cardBg, '#0B0B15'] : ['#171726', '#0D0D18']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[styles.card, { borderColor: live ? market.accent + '4D' : Colors.border }]}
+          style={[styles.card, { borderColor: live ? market.accent + '55' : Colors.border, shadowColor: live ? market.accent : '#000000' }]}
         >
           <View style={styles.head}>
             <View style={[styles.iconWrap, { backgroundColor: market.accent + '18' }]}>
@@ -53,14 +53,14 @@ export function MarketCard({ market, language, onPress, index = 0 }) {
 const styles = StyleSheet.create({
   wrapper: { width: '48.5%', marginBottom: 12 },
   press: { borderRadius: 20 },
-  card: { borderRadius: 20, borderWidth: 1, padding: 14, minHeight: 190 },
+  card: { borderRadius: 20, borderWidth: 1, padding: 14, minHeight: 194, shadowOpacity: 0.22, shadowRadius: 16, shadowOffset: { width: 0, height: 8 } },
   head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 },
   iconWrap: { width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   icon: { fontSize: 18 },
   status: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, paddingHorizontal: 6, paddingVertical: 3 },
   statusDot: { width: 5, height: 5, borderRadius: 3 },
   statusText: { fontSize: 8, fontWeight: '800' },
-  title: { color: Colors.white, fontSize: Fonts.sizes.md, fontWeight: '800', marginTop: 12 },
+  title: { color: Colors.white, fontSize: Fonts.sizes.md, fontWeight: '900', marginTop: 12 },
   desc: { color: Colors.textSecondary, fontSize: Fonts.sizes.xs, lineHeight: 16, marginTop: 4, minHeight: 32 },
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto', paddingTop: 12 },
   priceLabel: { color: Colors.textMuted, fontSize: 8, fontWeight: '700', letterSpacing: 0.7 },

@@ -44,7 +44,7 @@ function TabBar({ state, navigation }) {
                 const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
                 if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
               }}
-              style={styles.tabItem}
+              style={[styles.tabItem, focused && styles.tabItemActive]}
             >
               <Text style={[styles.tabIcon, focused && styles.tabIconActive]}>{item.icon}</Text>
               <Text style={[styles.tabLabel, focused && styles.tabLabelActive]} numberOfLines={1}>
@@ -86,10 +86,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: Colors.borderLight,
-    backgroundColor: '#0D0D14B3',
+    backgroundColor: '#0D0D1AE6',
     paddingVertical: 9,
   },
-  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 },
+  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2, borderRadius: 15, marginHorizontal: 2, paddingVertical: 3 },
+  tabItemActive: { backgroundColor: '#F0A50012' },
   tabIcon: { color: Colors.textMuted, fontSize: 15 },
   tabIconActive: { color: Colors.gold },
   tabLabel: { color: Colors.textMuted, fontSize: 8, fontWeight: '700' },
