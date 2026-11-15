@@ -1,9 +1,11 @@
 # NEXUS AI
 
-**نظام تشغيل ذكي مصغّر داخل iPhone** — تطبيق SwiftUI أصلي + خادم FastAPI حقيقي + PostgreSQL + Gemini على الخادم فقط.
+**نظام تشغيل ذكي مصغّر داخل iPhone** — تطبيق iOS + خادم FastAPI حقيقي + PostgreSQL + Gemini على الخادم فقط.
 
 > هذا المستودع يحتوي على المنتج الكامل: تطبيق iOS، الخادم، قاعدة البيانات، الاختبارات، ومسار بناء IPA عبر GitHub Actions.
 > لا يوجد موقع ويب ولا لوحة ويب منفصلة؛ كل شيء داخل التطبيق.
+>
+> تطبيق المنتج الحالي (الأسواق السبعة والتحليل والتوصيات) موجود في `mobile/` باستخدام Expo/React Native. نسخة SwiftUI الأصلية باقية في `ios/` ولم تُحذف.
 
 ---
 
@@ -20,10 +22,11 @@
 | الأدوات ومركز الأمان والإعدادات | ✅ يعمل | `test_tools_and_security_surfaces_are_real` |
 | تحديث بيانات الحساب وكلمة المرور | ✅ يعمل | `test_account_update_name_and_password` |
 | مساعد Gemini | ⚠️ الكود جاهز، يحتاج `GEMINI_API_KEY` | اختبار حقيقي تلقائي عند توفر المفتاح |
-| ربط التطبيق بالخادم | ⚠️ يحتاج Build على macOS + جهاز/محاكي | لم يُشغّل هنا (بيئة Linux) |
-| بناء IPA | ⚠️ جاهز عبر GitHub Actions | workflow: `.github/workflows/ios-build.yml` |
+| ربط التطبيق بالخادم | ⚠️ يحتاج Backend منشوراً | عنوان الخادم يُدخل داخل التطبيق ويُتحقق منه |
+| بناء IPA | ✅ تم بناؤه والتحقق منه | `docs/IPA-BUILD-REPORT.md` |
+| GitHub Actions (macOS) | ✅ نجح | `.github/workflows/expo-ios-build.yml`, run `43714673687` |
 
-**نتيجة آخر تشغيل للاختبارات:** `42 passed, 1 skipped` على SQLite وPostgreSQL — التفاصيل في `docs/TEST-REPORT.md`.
+**نتيجة آخر تشغيل للاختبارات:** Backend `18 passed`، وMobile `3 passed`، وExpo iOS export ناجح — التفاصيل في `docs/TEST-REPORT.md`.
 
 ---
 
@@ -43,6 +46,11 @@ nexus-ai/
 │   │   ├── routers/             # auth, account, projects, files, chats, assistant, tools
 │   │   └── services/            # gemini.py, assistant.py
 │   └── tests/                   # 18 اختباراً (17 نشط + 1 حقيقي اختياري)
+├── mobile/                      # تطبيق المنتج: Expo / React Native
+│   ├── App.js
+│   ├── src/screens/             # Home, MarketDetail, Recommendations, History, Chat, Settings
+│   ├── src/state/               # Backend URL + حالة الاتصال
+│   └── tests/                   # اختبارات منطق العميل
 ├── ios/
 │   ├── project.yml              # XcodeGen (بديل منظم لملف pbxproj)
 │   └── NexusAI/
@@ -86,6 +94,29 @@ DATABASE_URL=sqlite+aiosqlite:///./nexus.db JWT_SECRET=dev-secret uvicorn app.ma
 ---
 
 ## 4. تشغيل تطبيق iPhone
+
+### تطبيق Expo (المنتج الحالي)
+
+```bash
+cd mobile
+npm ci
+npm test
+npx expo start
+```
+
+لبناء نسخة iOS محلية على macOS:
+
+```bash
+npx expo prebuild --platform ios --no-install
+cd ios && pod install
+xcodebuild -workspace NEXUSAI.xcworkspace -scheme NEXUSAI \
+  -configuration Release -destination 'generic/platform=iOS' \
+  CODE_SIGNING_ALLOWED=NO archive
+```
+
+أو شغّل workflow `Build Expo iOS IPA` من GitHub Actions؛ ينتج `NEXUSAI-unsigned-ipa` artifact.
+
+### تطبيق SwiftUI الأصلي
 
 المتطلبات: macOS + Xcode 15+ + XcodeGen.
 
@@ -147,16 +178,24 @@ open NexusAI.xcodeproj
 - **Signed IPA**: موقّع بشهادة Apple صالحة + Provisioning Profile، ويعمل على الأجهزة المصرح بها.
 
 GitHub Actions:
-- `Build iOS App` → ينتج `NexusAI-unsigned-ipa` artifact في كل Push.
+- `Build Expo iOS IPA` → ينتج `NEXUSAI-unsigned-ipa` artifact عند تغيير `mobile/` أو يدوياً.
+- `Build iOS App` → مسار SwiftUI الأصلي.
 - `Build Signed iOS App` → يدوي، يحتاج Secrets التوقيع.
+
+الملف الناتج لهذه النسخة:
+
+- `NEXUS-AI.ipa` — 5,086,426 بايت.
+- SHA-256: `764b08b606de63226cca4c4ff563e192af4d823f627a2150a1977c954da5be22`.
+- Bundle ID: `ai.nexus.app`، arm64، iOS 15.1+.
+- غير موقّع، جاهز لإعادة التوقيع عبر ESign — راجع `docs/ESIGN-INSTALL.md`.
 
 ---
 
 ## 8. ما تبقى بصراحة
 
-- **Build iOS لم يُنفَّذ في بيئة العمل الحالية** (Linux بدون Xcode). الـ workflow جاهز، وأول تشغيل على GitHub Actions سيثبت النتيجة.
-- **Gemini لم يُختبر بمفتاح حقيقي هنا** لأنه لا يوجد `GEMINI_API_KEY`; الاختبار يعمل تلقائياً عند توفره.
-- **النشر على Railway** يحتاج تنفيذه من حسابك أو تزويدنا بصلاحية؛ لم يُنشر بعد.
-- **اختبار الصوت/الميكروفون** يحتاج جهاز iPhone؛ الأذونات مضافة في `Info.plist` والكود جاهز.
+- **التوقيع**: لا توجد شهادة Apple أو Provisioning Profile هنا، لذلك الملف غير موقّع ولم يُختبر تثبيته على جهاز.
+- **النشر على Railway**: لم يُنشر من مساحة العمل لعدم توفر `RAILWAY_TOKEN`. التطبيق لا يعرض ONLINE قبل إدخال رابط Backend صالح والتحقق منه.
+- **Gemini / Mistral**: لم يُنفّذ اختبار بمفتاح حقيقي هنا. الاختبارات الجاهزة تعمل تلقائياً عند توفير المفتاح.
+- **اختبار الصوت/الميكروفون** في نسخة SwiftUI يحتاج جهاز iPhone؛ الأذونات مضافة في `Info.plist` والكود جاهز.
 
 لا يُعتبر أي بند أعلاه مكتملاً لمجرد وجود الكود؛ الحالة المذكورة هي ما تم التحقق منه فعلياً.

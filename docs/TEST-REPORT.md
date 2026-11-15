@@ -82,3 +82,17 @@ GEMINI_API_KEY=... .venv/bin/python -m pytest tests/test_assistant.py -q
 - لا توجد أسعار أو بيانات أعمال وهمية في أي مسار إنتاجي.
 - اختبارات الملفات تتحقق من منع Path Traversal.
 - اختبارات العزل تتحقق من 404 عند محاولة الوصول لبيانات مستخدم آخر.
+
+## 2026-11-15 — Expo iOS IPA build
+
+- Branch `lemon/expo-ios-ipa`, commit `bae005d`.
+- GitHub Actions `Build Expo iOS IPA`: **success** (run 43714673687, macOS 15).
+- `npm ci` success, mobile tests **3 passed**, `expo prebuild` success, CocoaPods success, Release archive success.
+- Artifact `NEXUSAI-unsigned-ipa`, 5,086,426 bytes.
+- SHA-256 `764b08b606de63226cca4c4ff563e192af4d823f627a2150a1977c954da5be22`.
+- Bundle ID `ai.nexus.app`, display name `NEXUS AI`, version 1.0.0 (1), minimum iOS 15.1.
+- Main binary `NEXUSAI`: Mach-O 64-bit arm64, 6,389,352 bytes (not a placeholder).
+- `main.jsbundle` present, 2,650,717 bytes.
+- No `_CodeSignature`, no `embedded.mobileprovision`: unsigned as expected.
+- No Google/Mistral/OpenAI key, Bearer token or private key found in the IPA.
+- Not tested: signing, ESign installation, device launch, live backend connection. See `docs/ESIGN-INSTALL.md`.
